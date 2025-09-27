@@ -1,0 +1,29 @@
+[
+  {
+    "id": 1,
+    "name": "John Doe",
+    "phone": "123-456-7890",
+    "email": "john@example.com",
+    "age": 0,
+    "address": "Unknown",
+    "department": "General"
+  },
+  {
+    "id": 2,
+    "name": "Jane Smith",
+    "phone": "987-654-3210",
+    "email": "jane@example.com",
+    "age": 0,
+    "address": "Unknown",
+    "department": "General"
+  },
+  {
+    "id": 3,
+    "name": "Bob Johnson",
+    "phone": "555-123-4567",
+    "email": "bob@example.com",
+    "age": 0,
+    "address": "Unknown",
+    "department": "General"
+  }
+]
