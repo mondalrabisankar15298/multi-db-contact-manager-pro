@@ -464,79 +464,84 @@ class DataIntegrity:
         return issues
 
 
+# Import database manager for multi-database support
+from database.manager import db_manager
+
 # Create a default instance for backward compatibility
-default_db = ContactDatabase()
+# Now uses the database manager which handles database switching
+default_db = db_manager.current_adapter
 validator = DataValidator()
 
 # Export functions for backward compatibility with existing code
+# These functions now use the current database adapter from db_manager
 def create_table():
-    return default_db.create_table()
+    return db_manager.current_adapter.create_table()
 
 def add_contact(name, phone, email):
-    return default_db.add_contact(name, phone, email)
+    return db_manager.current_adapter.add_contact(name, phone, email)
 
 def view_contacts():
-    return default_db.view_contacts()
+    return db_manager.current_adapter.view_contacts()
 
 def get_contact_by_id(contact_id):
-    return default_db.get_contact_by_id(contact_id)
+    return db_manager.current_adapter.get_contact_by_id(contact_id)
 
 def update_contact_name(contact_id, new_name):
-    return default_db.update_contact_name(contact_id, new_name)
+    return db_manager.current_adapter.update_contact_name(contact_id, new_name)
 
 def update_contact_phone(contact_id, new_phone):
-    return default_db.update_contact_phone(contact_id, new_phone)
+    return db_manager.current_adapter.update_contact_phone(contact_id, new_phone)
 
 def update_contact_email(contact_id, new_email):
-    return default_db.update_contact_email(contact_id, new_email)
+    return db_manager.current_adapter.update_contact_email(contact_id, new_email)
 
 def delete_contact(contact_id):
-    return default_db.delete_contact(contact_id)
+    return db_manager.current_adapter.delete_contact(contact_id)
 
 def search_contact(search_term):
-    return default_db.search_contact(search_term)
+    return db_manager.current_adapter.search_contact(search_term)
 
 def advanced_search(filters):
-    return default_db.advanced_search(filters)
+    return db_manager.current_adapter.advanced_search(filters)
 
 def export_to_csv(filename="contacts_export.csv"):
-    return default_db.export_to_csv(filename)
+    return db_manager.current_adapter.export_to_csv(filename)
 
 def export_to_json(filename="contacts_export.json"):
-    return default_db.export_to_json(filename)
+    return db_manager.current_adapter.export_to_json(filename)
 
 def import_from_csv(filename):
-    return default_db.import_from_csv(filename)
+    return db_manager.current_adapter.import_from_csv(filename)
 
 def bulk_update(contact_ids, field, new_value):
-    return default_db.bulk_update(contact_ids, field, new_value)
+    return db_manager.current_adapter.bulk_update(contact_ids, field, new_value)
 
 def bulk_delete(contact_ids):
-    return default_db.bulk_delete(contact_ids)
+    return db_manager.current_adapter.bulk_delete(contact_ids)
 
 def get_contact_analytics():
-    return default_db.get_contact_analytics()
+    return db_manager.current_adapter.get_contact_analytics()
 
 def get_database_stats():
-    return default_db.get_database_stats()
+    return db_manager.current_adapter.get_database_stats()
 
 def get_table_info():
-    return default_db.get_table_info()
+    return db_manager.current_adapter.get_table_info()
 
 def add_column(column_name, column_type, default_value=None):
-    return default_db.add_column(column_name, column_type, default_value)
+    return db_manager.current_adapter.add_column(column_name, column_type, default_value)
 
 def backup_database():
-    return default_db.backup_database()
+    return db_manager.current_adapter.backup_database()
 
 def restore_database(backup_filename):
-    return default_db.restore_database(backup_filename)
+    return db_manager.current_adapter.restore_database(backup_filename)
 
 def cleanup_db():
-    return default_db.cleanup_db()
+    return db_manager.current_adapter.cleanup_db()
 
 def full_cleanup_db():
-    return default_db.full_cleanup_db()
+    return db_manager.current_adapter.full_cleanup_db()
 
 def validate_email(email):
     return validator.validate_email(email)
@@ -548,5 +553,26 @@ def format_phone(phone):
     return validator.format_phone(phone)
 
 def check_data_integrity():
-    integrity_checker = DataIntegrity(default_db)
+    integrity_checker = DataIntegrity(db_manager.current_adapter)
     return integrity_checker.check_data_integrity()
+
+# Additional helper functions for database management
+def get_current_database_type():
+    """Get the current database type."""
+    return db_manager.current_db_type
+
+def get_current_database_info():
+    """Get information about the current database connection."""
+    return db_manager.get_connection_info()
+
+def switch_database(db_type, config=None):
+    """Switch to a different database."""
+    return db_manager.switch_database(db_type, config)
+
+def get_available_databases():
+    """Get list of available database types."""
+    return db_manager.get_available_databases()
+
+def test_database_connection():
+    """Test the current database connection."""
+    return db_manager.test_current_connection()
