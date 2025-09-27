@@ -1,6 +1,6 @@
-import sqlite3
+# Import from core operations for consistency
+from core_operations import default_db
 
 def get_connection():
     """Create and return a database connection."""
-    conn = sqlite3.connect("contacts.db")
-    return conn
+    return default_db.get_connection()

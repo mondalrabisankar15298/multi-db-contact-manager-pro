@@ -3,14 +3,18 @@ Menus Module - Menu Functions
 Handles all menu operations and user interactions for the Contact Book Manager.
 """
 
-from crud import (add_contact, view_contacts, update_contact_name, update_contact_phone, 
-                 update_contact_email, delete_contact, search_contact, get_contact_by_id,
-                 export_to_csv, export_to_json, import_from_csv, advanced_search,
-                 bulk_update, bulk_delete, add_category_column, add_tag_column,
-                 get_contacts_by_category, get_contacts_by_tag, validate_email, 
-                 validate_phone, format_phone, check_data_integrity, get_contact_analytics,
-                 get_database_stats, get_table_info, add_column, remove_column,
-                 backup_database, restore_database, full_cleanup_db)
+# Import from core operations to avoid circular dependencies
+from core_operations import (add_contact, view_contacts, update_contact_name, update_contact_phone, 
+                            update_contact_email, delete_contact, search_contact, get_contact_by_id,
+                            export_to_csv, export_to_json, import_from_csv, advanced_search,
+                            bulk_update, bulk_delete, validate_email, 
+                            validate_phone, format_phone, check_data_integrity, get_contact_analytics,
+                            get_database_stats, get_table_info, add_column, 
+                            backup_database, restore_database, full_cleanup_db)
+
+# Import additional functions from crud for backward compatibility
+from crud import (add_category_column, add_tag_column, get_contacts_by_category, 
+                 get_contacts_by_tag, remove_column)
 
 from ui import (display_contacts, display_contact_analytics, display_database_stats,
                display_table_structure, display_data_integrity_results,
@@ -68,35 +72,46 @@ def update_contact_menu():
     """Handle updating a contact."""
     print("\n✏️ Update Contact")
     print("-" * 30)
-    
+
     try:
-        contact_id = int(input("Enter contact ID to update: "))
-        
+        contact_id_input = input("Enter contact ID to update: ").strip()
+
+        # Handle empty input
+        if not contact_id_input:
+            display_error("Contact ID cannot be empty!")
+            return
+
+        try:
+            contact_id = int(contact_id_input)
+        except ValueError:
+            display_error("Please enter a valid numeric contact ID!")
+            return
+
         # Check if contact exists
         contact = get_contact_by_id(contact_id)
         if not contact:
             display_error("Contact not found!")
             return
-        
+
         display_contact_preview(contact)
-        
+
         print("\nWhat would you like to update?")
         print("1. Phone number")
         print("2. Email address")
         print("3. Name")
-        
+
         update_choice = input("Enter choice (1-3): ").strip()
-        
+
         if update_choice == "1":
             new_phone = input("Enter new phone number: ").strip()
             update_contact_phone(contact_id, new_phone)
             display_success("Phone number updated!")
-            
+
         elif update_choice == "2":
             new_email = input("Enter new email address: ").strip()
             update_contact_email(contact_id, new_email)
             display_success("Email address updated!")
-            
+
         elif update_choice == "3":
             new_name = input("Enter new name: ").strip()
             if not new_name:
@@ -104,12 +119,12 @@ def update_contact_menu():
                 return
             update_contact_name(contact_id, new_name)
             display_success("Name updated!")
-            
+
         else:
             display_error("Invalid choice!")
-            
-    except ValueError:
-        display_error("Please enter a valid contact ID!")
+
+    except EOFError:
+        display_error("Input interrupted. Please try again.")
     except Exception as e:
         display_operation_error("updating contact", e)
 
@@ -119,25 +134,36 @@ def delete_contact_menu():
     print("-" * 30)
     
     try:
-        contact_id = int(input("Enter contact ID to delete: "))
-        
+        contact_id_input = input("Enter contact ID to delete: ").strip()
+
+        # Handle empty input
+        if not contact_id_input:
+            display_error("Contact ID cannot be empty!")
+            return
+
+        try:
+            contact_id = int(contact_id_input)
+        except ValueError:
+            display_error("Please enter a valid numeric contact ID!")
+            return
+
         # Check if contact exists
         contact = get_contact_by_id(contact_id)
         if not contact:
             display_error("Contact not found!")
             return
-        
+
         display_contact_preview(contact)
         confirm = input("Are you sure you want to delete this contact? (y/N): ").strip().lower()
-        
+
         if confirm in ['y', 'yes']:
             delete_contact(contact_id)
             display_success("Contact deleted successfully!")
         else:
             display_info("Deletion cancelled.")
-            
-    except ValueError:
-        display_error("Please enter a valid contact ID!")
+
+    except EOFError:
+        display_error("Input interrupted. Please try again.")
     except Exception as e:
         display_operation_error("deleting contact", e)
 
@@ -469,7 +495,8 @@ def restore_database_menu():
     
     try:
         import glob
-        backup_files = glob.glob("contacts_backup_*.db")
+        import os
+        backup_files = glob.glob(os.path.join("db_backup", "contacts_backup_*.db"))
         
         if not backup_files:
             display_info("No backup files found!")
@@ -480,10 +507,22 @@ def restore_database_menu():
             print(f"{i}. {backup_file}")
         
         try:
-            choice = int(input("\nEnter backup file number: ")) - 1
+            choice_input = input("\nEnter backup file number: ").strip()
+
+            # Handle empty input
+            if not choice_input:
+                display_error("Choice cannot be empty!")
+                return
+
+            try:
+                choice = int(choice_input) - 1
+            except ValueError:
+                display_error("Please enter a valid number!")
+                return
+
             if 0 <= choice < len(backup_files):
                 backup_filename = backup_files[choice]
-                
+
                 confirm = input(f"Restore from '{backup_filename}'? This will overwrite current database! (y/N): ").strip().lower()
                 if confirm in ['y', 'yes']:
                     restore_database(backup_filename)
@@ -492,8 +531,8 @@ def restore_database_menu():
                     display_info("Restore cancelled.")
             else:
                 display_error("Invalid choice!")
-        except ValueError:
-            display_error("Please enter a valid number!")
+        except EOFError:
+            display_error("Input interrupted. Please try again.")
             
     except Exception as e:
         display_operation_error("restoring database", e)

@@ -16,7 +16,8 @@ contact_book/
 │── DOCUMENTATION.md         # Complete feature documentation
 │── contacts_export.csv     # Export files (generated)
 │── contacts_export.json    # Export files (generated)
-│── contacts_backup_*.db    # Backup files (generated)
+│── db_backup/              # Database backup folder
+│   └── contacts_backup_*.db # Backup files (generated)
 ```
 
 ## 🎯 Core Features
