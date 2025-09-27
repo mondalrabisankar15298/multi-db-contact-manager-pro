@@ -66,3 +66,16 @@ test_*/
 tests/
 *_test.py
 conftest.py
+
+# Docker and Environment files
+.env
+docker.env
+.env.local
+.env.*.local
+
+# Docker volumes and data
+data/
+docker-volumes/
+
+# Database connection logs
+*.db-journal

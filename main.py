@@ -22,8 +22,16 @@ def is_interactive() -> bool:
 
 def display_main_menu():
     """Display the main menu."""
+    # Import here to avoid circular imports
+    from core_operations import get_current_database_type, get_current_database_info
+    
+    current_db = get_current_database_type().upper()
+    db_info = get_current_database_info()
+    
     print("\n" + "="*50)
     print("📒 Contact Book Manager")
+    print("="*50)
+    print(f"🗄️  Current Database: {current_db}")
     print("="*50)
     print("1. ➕ Add Contact")
     print("2. 👀 View All Contacts")
@@ -32,7 +40,8 @@ def display_main_menu():
     print("5. 🗑️  Delete Contact")
     print("6. 📊 Advanced Features")
     print("7. ⚙️  Database Management")
-    print("8. 🚪 Exit")
+    print("8. 🗄️  Switch Database")
+    print("9. 🚪 Exit")
     print("0. 🔄 Refresh Menu")
     print("="*50)
 
@@ -66,6 +75,29 @@ def display_database_management_menu():
     print("6. 🔄 Restore Database")
     print("7. 🧹 Cleanup Database")
     print("8. 🔙 Back to Previous Menu")
+    print("0. 🚪 Exit Application")
+    print("="*50)
+
+def display_database_selection_menu():
+    """Display database selection submenu."""
+    from core_operations import get_current_database_type, get_available_databases
+    from config.database_config import get_database_display_info
+    
+    current_db = get_current_database_type()
+    available_dbs = get_available_databases()
+    
+    print("\n" + "="*50)
+    print("🗄️  Database Selection")
+    print("="*50)
+    print(f"Current: {current_db.upper()}")
+    print("="*50)
+    
+    for i, db_type in enumerate(available_dbs, 1):
+        display_info = get_database_display_info(db_type)
+        status = "✅ ACTIVE" if db_type == current_db else ""
+        print(f"{i}. {display_info['emoji']} {display_info['name']} - {display_info['subtitle']} {status}")
+    
+    print(f"{len(available_dbs) + 1}. 🔙 Back to Main Menu")
     print("0. 🚪 Exit Application")
     print("="*50)
 
@@ -148,6 +180,71 @@ def handle_database_management():
             from ui import display_error
             display_error("Invalid choice! Please enter 0-8.")
 
+def handle_database_selection():
+    """Handle database selection submenu."""
+    from core_operations import get_available_databases, switch_database, test_database_connection
+    from config.database_config import get_database_display_info
+    from ui import display_success, display_error
+    
+    while True:
+        display_database_selection_menu()
+        available_dbs = get_available_databases()
+        max_choice = len(available_dbs)
+        
+        try:
+            choice = input(f"\nEnter your choice (0-{max_choice + 1}): ").strip()
+            
+            if choice == "0":
+                print("\n👋 Thank you for using Contact Book Manager!")
+                print("Goodbye! 👋")
+                raise SystemExit(0)
+            elif choice == str(max_choice + 1):
+                # Back to main menu
+                return "back"
+            elif choice.isdigit() and 1 <= int(choice) <= max_choice:
+                selected_db = available_dbs[int(choice) - 1]
+                display_info = get_database_display_info(selected_db)
+                
+                print(f"\n🔄 Switching to {display_info['name']}...")
+                
+                # Attempt to switch database
+                success = switch_database(selected_db)
+                
+                if success:
+                    # Test the connection
+                    if test_database_connection():
+                        display_success(f"✅ Successfully switched to {display_info['name']}!")
+                        print(f"📊 You can now use all features with {display_info['name']} database.")
+                        
+                        # Initialize table in new database
+                        try:
+                            from core_operations import create_table
+                            create_table()
+                            print("🏗️  Database table initialized.")
+                        except Exception as e:
+                            display_error(f"Warning: Could not initialize table: {e}")
+                        
+                        input("\nPress Enter to continue...")
+                        return "back"
+                    else:
+                        display_error(f"❌ Connected to {display_info['name']} but connection test failed!")
+                else:
+                    display_error(f"❌ Failed to switch to {display_info['name']}!")
+                    print("💡 Make sure the database service is running (check Docker containers)")
+                
+                input("\nPress Enter to continue...")
+            else:
+                display_error(f"Invalid choice! Please enter 0-{max_choice + 1}.")
+                
+        except KeyboardInterrupt:
+            print("\n\n👋 Goodbye!")
+            break
+        except (EOFError, SystemExit):
+            raise
+        except Exception as e:
+            display_error(f"Unexpected error: {e}")
+            input("\nPress Enter to continue...")
+
 def initialize_database():
     """Initialize the database."""
     try:
@@ -186,7 +283,7 @@ def main_menu_loop():
     while True:
         try:
             display_main_menu()
-            choice = input("\nEnter your choice (0-8): ").strip()
+            choice = input("\nEnter your choice (0-9): ").strip()
 
             if choice == "1":
                 add_contact_menu()
@@ -211,6 +308,12 @@ def main_menu_loop():
                 elif result == "goto_main":
                     continue
             elif choice == "8":
+                result = handle_database_selection()
+                if result == "back":
+                    continue
+                elif result == "goto_main":
+                    continue
+            elif choice == "9":
                 print("\n👋 Thank you for using Contact Book Manager!")
                 print("Goodbye! 👋")
                 break
@@ -218,7 +321,7 @@ def main_menu_loop():
                 print("🔄 Refreshing menu...")
                 continue
             else:
-                display_error("Invalid choice! Please enter 0-8.")
+                display_error("Invalid choice! Please enter 0-9.")
 
         except KeyboardInterrupt:
             print("\n\n👋 Goodbye!")
