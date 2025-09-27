@@ -3,9 +3,10 @@ UI Module - User Interface Functions
 Handles all display and formatting functions for the Contact Book Manager.
 """
 
-from crud import (view_contacts, get_contact_by_id, search_contact, 
-                 get_contact_analytics, get_database_stats, get_table_info,
-                 validate_email, validate_phone, format_phone, check_data_integrity)
+# Import from core operations to avoid circular dependencies
+from core_operations import (view_contacts, get_contact_by_id, search_contact, 
+                            get_contact_analytics, get_database_stats, get_table_info,
+                            validate_email, validate_phone, format_phone, check_data_integrity)
 
 def display_contacts(contacts):
     """Display contacts in a formatted way."""
@@ -19,12 +20,12 @@ def display_contacts(contacts):
     print("-" * 60)
     
     for contact in contacts:
-        # Handle variable number of columns
-        contact_id = contact[0]
-        name = contact[1]
-        phone = contact[2] if len(contact) > 2 else None
-        email = contact[3] if len(contact) > 3 else None
-        print(f"{contact_id:<5} {name:<20} {phone or 'N/A':<15} {email or 'N/A':<20}")
+        # Handle variable number of columns and convert to strings safely
+        contact_id = str(contact[0]) if contact[0] is not None else 'N/A'
+        name = str(contact[1]) if contact[1] is not None else 'N/A'
+        phone = str(contact[2]) if len(contact) > 2 and contact[2] is not None else 'N/A'
+        email = str(contact[3]) if len(contact) > 3 and contact[3] is not None else 'N/A'
+        print(f"{contact_id:<5} {name:<20} {phone:<15} {email:<20}")
 
 def display_contact_analytics():
     """Display contact analytics."""
@@ -150,8 +151,9 @@ def display_contact_preview(contact):
     if not contact:
         print("❌ Contact not found!")
         return
-    
-    contact_id, name, phone, email = contact
+
+    # Handle variable number of columns (database may have additional columns like category, tags)
+    contact_id, name, phone, email = contact[0], contact[1], contact[2], contact[3]
     print(f"\nContact Preview:")
     print(f"ID: {contact_id}")
     print(f"Name: {name}")

@@ -1,0 +1,68 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.git
+.mypy_cache
+.pytest_cache
+.hypothesis
+
+# Database backups
+db_backup/
+contacts_backup_*.db
+
+# Export files
+*.csv
+*.json
+contacts_export.*
+test_export.*
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+
+# Logs
+*.log
+logs/
+
+# Database files (optional - uncomment if you want to ignore all .db files)
+# *.db
+# contacts.db
+
+# Test files and directories
+test_*/
+tests/
+*_test.py
+conftest.py

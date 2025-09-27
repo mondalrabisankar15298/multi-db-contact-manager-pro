@@ -3,6 +3,7 @@ Navigation Module - Menu Navigation System
 Handles navigation stack and menu history for the Contact Book Manager.
 """
 
+
 class NavigationStack:
     """Navigation stack to track menu history."""
     
@@ -104,13 +105,13 @@ def handle_navigation_choice(choice, max_options):
     elif choice == "2" and nav_stack.get_stack_depth() > 0:
         # Go to main menu
         nav_stack.clear_stack()
-        from main import main_menu_loop
-        return main_menu_loop()
+        # Return a special signal instead of importing main
+        return "goto_main"
     elif choice == "3" or (choice == "1" and not nav_stack.can_go_back()):
         # Exit application
         print("\n👋 Thank you for using Contact Book Manager!")
         print("Goodbye! 👋")
-        exit()
+        raise SystemExit(0)
     
     return None
 
