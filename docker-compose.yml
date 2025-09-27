@@ -1,0 +1,123 @@
+version: '3.8'
+
+services:
+  # Your Contact Manager Application
+  contact-manager:
+    build: .
+    container_name: contact-manager-app
+    environment:
+      - DB_TYPE=${DB_TYPE:-sqlite}
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_USER=contact_user
+      - MYSQL_PASSWORD=contact_password
+      - MYSQL_DATABASE=contacts
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=contact_user
+      - POSTGRES_PASSWORD=contact_password
+      - POSTGRES_DATABASE=contacts
+      - MONGO_HOST=mongodb
+      - MONGO_PORT=27017
+      - MONGO_DATABASE=contacts
+      - CONTACT_MANAGER_DISABLE_UI=0
+    volumes:
+      - ./contacts.db:/app/contacts.db
+      - ./data:/app/data
+      - ./db_backup:/app/db_backup
+    depends_on:
+      mysql:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    networks:
+      - contact-network
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+    profiles:
+      - full
+
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: contact-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: contacts
+      MYSQL_USER: contact_user
+      MYSQL_PASSWORD: contact_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql-init:/docker-entrypoint-initdb.d
+    networks:
+      - contact-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "contact_user", "-pcontact_password"]
+      timeout: 20s
+      retries: 10
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
+    container_name: contact-postgres
+    environment:
+      POSTGRES_DB: contacts
+      POSTGRES_USER: contact_user
+      POSTGRES_PASSWORD: contact_password
+      PGPORT: 5433
+    ports:
+      - "5433:5433"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d
+    networks:
+      - contact-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U contact_user -d contacts"]
+      timeout: 20s
+      retries: 10
+
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: contact-mongodb
+    environment:
+      MONGO_INITDB_DATABASE: contacts
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+      - ./docker/mongo-init:/docker-entrypoint-initdb.d
+    networks:
+      - contact-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      timeout: 20s
+      retries: 10
+
+  # Database Administration Tools (Optional)
+  adminer:
+    image: adminer
+    container_name: contact-adminer
+    ports:
+      - "8050:8050"
+    networks:
+      - contact-network
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  postgres_data:
+  mongo_data:
+
+networks:
+  contact-network:
+    driver: bridge

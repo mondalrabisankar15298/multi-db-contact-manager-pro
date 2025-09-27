@@ -12,9 +12,9 @@ from core_operations import (add_contact, view_contacts, update_contact_name, up
                             get_database_stats, get_table_info, add_column, 
                             backup_database, restore_database, full_cleanup_db)
 
-# Import additional functions from crud for backward compatibility
-from crud import (add_category_column, add_tag_column, get_contacts_by_category, 
-                 get_contacts_by_tag, remove_column)
+# TODO: Implement database schema management functions for multi-database support
+# from crud import (add_category_column, add_tag_column, get_contacts_by_category,
+#                  get_contacts_by_tag, remove_column)
 
 from ui import (display_contacts, display_contact_analytics, display_database_stats,
                display_table_structure, display_data_integrity_results,
@@ -337,20 +337,26 @@ def categories_tags_menu():
         choice = input("Enter choice (1-4): ").strip()
         
         if choice == "1":
-            if add_category_column():
-                display_success("Category column added!")
-            else:
-                display_error("Failed to add category column!")
+            # TODO: Implement add_category_column for multi-database support
+            # if add_category_column():
+            #     display_success("Category column added!")
+            # else:
+            #     display_error("Failed to add category column!")
+            display_info("Category column management not yet implemented for multi-database support")
                 
         elif choice == "2":
-            if add_tag_column():
-                display_success("Tags column added!")
-            else:
-                display_error("Failed to add tags column!")
+            # TODO: Implement add_tag_column for multi-database support
+            # if add_tag_column():
+            #     display_success("Tags column added!")
+            # else:
+            #     display_error("Failed to add tags column!")
+            display_info("Tag column management not yet implemented for multi-database support")
                 
         elif choice == "3":
             category = input("Enter category: ").strip()
-            contacts = get_contacts_by_category(category)
+            # TODO: Implement get_contacts_by_category for multi-database support
+            # contacts = get_contacts_by_category(category)
+            contacts = []  # Temporary empty list
             if contacts:
                 print(f"\nContacts in category '{category}':")
                 display_contacts(contacts)
@@ -359,7 +365,9 @@ def categories_tags_menu():
                 
         elif choice == "4":
             tag = input("Enter tag: ").strip()
-            contacts = get_contacts_by_tag(tag)
+            # TODO: Implement get_contacts_by_tag for multi-database support
+            # contacts = get_contacts_by_tag(tag)
+            contacts = []  # Temporary empty list
             if contacts:
                 print(f"\nContacts with tag '{tag}':")
                 display_contacts(contacts)
@@ -467,7 +475,9 @@ def remove_column_menu():
         
         confirm = input(f"Are you sure you want to remove column '{column_name}'? (y/N): ").strip().lower()
         if confirm in ['y', 'yes']:
-            remove_column(column_name)
+            # TODO: Implement remove_column for multi-database support
+            # remove_column(column_name)
+            display_info("Column removal not yet implemented for multi-database support")
             display_success("Column removed successfully!")
         else:
             display_info("Column removal cancelled.")
