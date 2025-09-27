@@ -42,7 +42,8 @@ contact_book/
 │── API_REFERENCE.md        # Technical API reference
 │── contacts_export.csv     # Export files (generated)
 │── contacts_export.json    # Export files (generated)
-│── contacts_backup_*.db    # Backup files (generated)
+│── db_backup/              # Database backup folder
+│   └── contacts_backup_*.db # Backup files (generated)
 ```
 
 ## 🛠️ Installation & Usage
