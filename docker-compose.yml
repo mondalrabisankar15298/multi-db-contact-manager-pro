@@ -1,28 +1,16 @@
-version: '3.8'
-
 services:
   # Your Contact Manager Application
   contact-manager:
     build: .
     container_name: contact-manager-app
+    env_file:
+      - docker.env
     environment:
-      - DB_TYPE=${DB_TYPE:-sqlite}
+      # Override localhost with container hostnames for Docker networking
       - MYSQL_HOST=mysql
-      - MYSQL_PORT=3306
-      - MYSQL_USER=contact_user
-      - MYSQL_PASSWORD=contact_password
-      - MYSQL_DATABASE=contacts
       - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_USER=contact_user
-      - POSTGRES_PASSWORD=contact_password
-      - POSTGRES_DATABASE=contacts
       - MONGO_HOST=mongodb
-      - MONGO_PORT=27017
-      - MONGO_DATABASE=contacts
-      - CONTACT_MANAGER_DISABLE_UI=0
     volumes:
-      - ./contacts.db:/app/contacts.db
       - ./data:/app/data
       - ./db_backup:/app/db_backup
     depends_on:
@@ -36,7 +24,6 @@ services:
       - contact-network
     stdin_open: true
     tty: true
-    restart: unless-stopped
     profiles:
       - full
 
@@ -56,7 +43,6 @@ services:
       - ./docker/mysql-init:/docker-entrypoint-initdb.d
     networks:
       - contact-network
-    restart: unless-stopped
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "contact_user", "-pcontact_password"]
       timeout: 20s
@@ -78,7 +64,6 @@ services:
       - ./docker/postgres-init:/docker-entrypoint-initdb.d
     networks:
       - contact-network
-    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U contact_user -d contacts"]
       timeout: 20s
@@ -97,7 +82,6 @@ services:
       - ./docker/mongo-init:/docker-entrypoint-initdb.d
     networks:
       - contact-network
-    restart: unless-stopped
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       timeout: 20s
@@ -111,7 +95,6 @@ services:
       - "8050:8050"
     networks:
       - contact-network
-    restart: unless-stopped
 
 volumes:
   mysql_data:

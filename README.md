@@ -1,76 +1,127 @@
-# 📒 Contact Book Manager - Professional Contact Management System
+<div align="center">
 
-A comprehensive, enterprise-grade Contact Book application built with Python and SQLite database. Features advanced analytics, bulk operations, data validation, and professional database management tools.
+# 📒 Multi-Database Contact Manager Pro
 
-## 🚀 Key Features
+*A professional contact management system with multi-database support and dynamic schema management*
 
-### Core Functionality
-- ➕ **Add Contacts** - Store name, phone, and email with validation
-- 👀 **View All Contacts** - Display contacts in professional formatted tables
-- 🔍 **Advanced Search** - Multi-criteria search and filtering capabilities
-- ✏️ **Update Contacts** - Modify any contact field with validation
-- 🗑️ **Delete Contacts** - Remove contacts with safety confirmations
+[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
+[![Docker](https://img.shields.io/badge/Docker-Supported-blue.svg)](https://docker.com)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-### Advanced Features
-- 📊 **Contact Analytics** - Comprehensive data analytics and reporting
-- 🔄 **Bulk Operations** - Update or delete multiple contacts simultaneously
-- 📤 **Data Export** - Export to CSV and JSON formats
-- 📥 **Data Import** - Import contacts from CSV files
-- 🏷️ **Categories & Tags** - Organize contacts with categories and tags
-- ✅ **Data Validation** - Email and phone number validation with formatting
-- 🔍 **Data Integrity** - Comprehensive data quality checks
+[Features](#-features) • [Quick Start](#-quick-start) • [Documentation](DOCS.md) • [Docker](#-docker-deployment) • [Contributing](#-contributing)
 
-### Database Management
-- 🏗️ **Table Structure** - View and modify database schema
-- ➕ **Add Columns** - Dynamically add new columns to the database
-- ➖ **Remove Columns** - Remove unnecessary columns safely
-- 💾 **Backup System** - Automatic timestamped database backups
-- 🔄 **Restore System** - Restore from backup files
-- 🧹 **Database Cleanup** - Complete database cleanup with safety confirmations
+</div>
 
-## 📁 Project Structure
+---
 
+## 🌟 Overview
+
+**Multi-Database Contact Manager Pro** is an enterprise-grade contact management system that seamlessly works with **SQLite**, **MySQL**, **PostgreSQL**, and **MongoDB**. Built with Python, it features dynamic schema management, real-time database switching, and professional-grade data operations.
+
+### 🎯 What Makes It Special
+
+- **🔄 Database Agnostic** - Same codebase works with 4 different database types
+- **🏗️ Dynamic Schema** - Add custom fields at runtime without code changes
+- **🚀 Zero Configuration** - Automatic database detection and health monitoring
+- **🐳 Docker Ready** - Full containerization support with one-command deployment
+- **📊 Enterprise Features** - Analytics, bulk operations, backup/restore, data validation
+
+---
+
+## ✨ Features
+
+<table>
+<tr>
+<td width="50%">
+
+### 🗄️ **Multi-Database Support**
+- **SQLite** - File-based, zero setup
+- **MySQL** - Industry standard RDBMS
+- **PostgreSQL** - Advanced SQL features
+- **MongoDB** - NoSQL document store
+- **Automatic failover** between databases
+
+### 🏗️ **Dynamic Schema Management**
+- Runtime column addition/removal
+- Cross-database schema compatibility
+- Automatic schema introspection
+- Type-safe field operations
+
+</td>
+<td width="50%">
+
+### 📊 **Professional Operations**
+- **CRUD Operations** with validation
+- **Advanced Search** & filtering
+- **Bulk Operations** for efficiency
+- **Import/Export** (CSV, JSON)
+- **Real-time Analytics** & reporting
+- **Automated Backups** with restore
+
+### 🛡️ **Enterprise Security**
+- Input validation & sanitization
+- SQL injection prevention
+- Data integrity monitoring
+- Multi-level confirmations
+
+</td>
+</tr>
+</table>
+
+---
+
+## 🚀 Quick Start
+
+### Option 1: Full Docker (Recommended)
+```bash
+# Clone and setup
+git clone https://github.com/yourusername/multi-db-contact-manager-pro.git
+cd multi-db-contact-manager-pro
+cp docker.env.example docker.env
+
+# Start everything in Docker
+docker compose --profile full up --build
+
+# Connect to the app (in another terminal)
+docker compose exec contact-manager python main.py
 ```
-contact_book/
-│── contacts.db              # SQLite database file (auto-created)
-│── main.py                  # Main application and menu system
-│── db.py                    # Database connection handler
-│── crud.py                  # All CRUD and advanced operations
-│── README.md                # This overview file
-│── DOCUMENTATION.md         # Complete feature documentation
-│── USER_GUIDE.md           # Quick user guide
-│── API_REFERENCE.md        # Technical API reference
-│── contacts_export.csv     # Export files (generated)
-│── contacts_export.json    # Export files (generated)
-│── db_backup/              # Database backup folder
-│   └── contacts_backup_*.db # Backup files (generated)
+
+### Option 2: Local Development
+```bash
+# Setup Python environment
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+
+# Setup configuration
+cp docker.env.example docker.env
+
+# Start databases in Docker
+docker compose up -d mysql postgres mongodb
+
+# Run the application
+python main.py
 ```
 
-## 🛠️ Installation & Usage
+### Option 3: Quick Scripts
+```bash
+# Full Docker deployment
+./start-docker-app.sh
 
-### Prerequisites
-- Python 3.6 or higher
-- No additional packages required (uses built-in libraries)
+# Or databases only (run app locally)
+./start-databases-only.sh && python main.py
+```
 
-### Quick Start
+---
 
-1. Navigate to the project directory:
-   ```bash
-   cd contact_book
-   ```
+## 🎮 Interactive Demo
 
-2. Run the application:
-   ```bash
-   python main.py
-   ```
-
-3. Start with the main menu and explore all features!
-
-## 📋 Complete Menu System
-
-### Main Menu (8 Options)
 ```
 📒 Contact Book Manager
+==================================================
+🗄️  Current Database: POSTGRESQL
+==================================================
 1. ➕ Add Contact
 2. 👀 View All Contacts
 3. 🔍 Search Contacts
@@ -78,161 +129,224 @@ contact_book/
 5. 🗑️  Delete Contact
 6. 📊 Advanced Features
 7. ⚙️  Database Management
-8. 🚪 Exit
+8. 🗄️  Switch Database
+0. 🔙 Back to Previous Menu
+111. 🚪 Exit Application
+==================================================
 ```
 
-### Advanced Features Submenu (9 Options)
+### 🔄 Database Switching
+Switch between databases seamlessly:
 ```
-📊 Advanced Features
-1. 📈 Contact Analytics
-2. 🔍 Advanced Search
-3. 📤 Export Data
-4. 📥 Import Data
-5. 🔄 Bulk Operations
-6. 🏷️  Categories & Tags
-7. ✅ Data Validation
-8. 🔍 Data Integrity Check
-9. 🔙 Back to Main Menu
+🗄️  Database Selection
+==================================================
+Current: POSTGRESQL
+==================================================
+1. 💾 SQLite - Local file database ✅ HEALTHY
+2. 🐬 MySQL - Popular relational database ✅ HEALTHY
+3. 🐘 PostgreSQL - Advanced relational database ✅ ACTIVE
+4. 🍃 MongoDB - Document-based NoSQL ✅ HEALTHY
 ```
-
-### Database Management Submenu (8 Options)
-```
-⚙️  Database Management
-1. 📊 View Database Statistics
-2. 🏗️  View Table Structure
-3. ➕ Add Column
-4. ➖ Remove Column
-5. 💾 Backup Database
-6. 🔄 Restore Database
-7. 🧹 Cleanup Database
-8. 🔙 Back to Main Menu
-```
-
-## 🗄️ Database Schema
-
-The application uses a comprehensive SQLite table structure:
-
-```sql
-CREATE TABLE contacts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    phone TEXT,
-    email TEXT,
-    age INTEGER DEFAULT 0,
-    address TEXT DEFAULT 'Unknown',
-    department TEXT DEFAULT 'General',
-    category TEXT DEFAULT 'General',
-    tags TEXT DEFAULT ''
-);
-```
-
-## 🎯 Usage Examples
-
-### Adding a Contact
-```
-Enter name: John Doe
-Enter phone (optional): +1-555-0123
-Enter email (optional): john@example.com
-✅ Contact added successfully!
-```
-
-### Advanced Search
-```
-Search by name: John
-Search by phone: 555
-Search by email: example.com
-Minimum ID: 1
-Maximum ID: 100
-🔍 Found 2 contact(s) matching your criteria
-```
-
-### Bulk Operations
-```
-Enter contact IDs: 1,2,3,4,5
-Enter field to update: department
-Enter new value: Engineering
-✅ Updated 5 contacts!
-```
-
-### Data Analytics
-```
-📊 Total Contacts: 150
-📞 Contacts with Phone: 145 (96.7%)
-📧 Contacts with Email: 140 (93.3%)
-✅ Complete Contacts: 135 (90.0%)
-🌐 Top Email Domains:
-   gmail.com: 45 contacts
-   company.com: 30 contacts
-```
-
-## 📚 Documentation
-
-### Complete Documentation
-- **[DOCUMENTATION.md](DOCUMENTATION.md)** - Complete feature documentation with detailed explanations
-- **[USER_GUIDE.md](USER_GUIDE.md)** - Quick user guide for easy reference
-- **[API_REFERENCE.md](API_REFERENCE.md)** - Technical API reference for developers
-
-### Quick Reference
-- **Main Features**: See DOCUMENTATION.md for complete feature list
-- **User Guide**: See USER_GUIDE.md for step-by-step instructions
-- **Technical Details**: See API_REFERENCE.md for function documentation
-
-## 🔧 Technical Details
-
-- **Database**: SQLite (file-based, no server required)
-- **Language**: Python 3.6+
-- **Dependencies**: None (uses built-in libraries)
-- **Architecture**: Modular design with separate modules for different functionalities
-- **Performance**: Optimized for large datasets with efficient queries
-- **Security**: Input validation, SQL injection prevention, data integrity checks
-
-## 🏆 Professional Features
-
-### Enterprise-Level Capabilities
-- **Data Analytics**: Comprehensive reporting and statistics
-- **Bulk Operations**: Efficient batch processing
-- **Data Validation**: Professional-grade data quality assurance
-- **Backup/Restore**: Complete data protection
-- **Import/Export**: Full data portability
-- **Database Management**: Professional database administration tools
-
-### Quality Assurance
-- **Data Integrity**: Continuous data quality monitoring
-- **Error Handling**: Comprehensive error management
-- **Input Validation**: Real-time validation and formatting
-- **Safety Features**: Multiple confirmation prompts for destructive operations
-
-## 🚀 Getting Started
-
-1. **Download/Clone** the project
-2. **Run** `python main.py`
-3. **Explore** the main menu
-4. **Try** the advanced features
-5. **Read** the documentation for complete details
-
-## 📞 Support & Resources
-
-- **Documentation**: Complete documentation in DOCUMENTATION.md
-- **User Guide**: Step-by-step guide in USER_GUIDE.md
-- **API Reference**: Technical details in API_REFERENCE.md
-- **Error Handling**: Built-in error messages and recovery options
-
-## 🎉 What Makes This Special
-
-This Contact Book Manager goes far beyond a simple CRUD application:
-
-- **Professional-Grade**: Enterprise-level features and capabilities
-- **Comprehensive**: Complete contact management solution
-- **User-Friendly**: Intuitive interface with clear navigation
-- **Powerful**: Advanced features for power users
-- **Reliable**: Robust error handling and data protection
-- **Extensible**: Modular design for easy customization
-
-**Start managing your contacts like a professional!** 📞✨
 
 ---
 
-**Version**: 2.0 - Professional Contact Management System  
-**Last Updated**: 2024  
-**License**: Open Source
-# multi-db-contact-manager-pro
+## 🏗️ Architecture
+
+<div align="center">
+
+```mermaid
+graph TB
+    UI[User Interface] --> Core[Core Operations]
+    Core --> Manager[Database Manager]
+    Manager --> Factory[Database Factory]
+    Factory --> SQLite[SQLite Adapter]
+    Factory --> MySQL[MySQL Adapter]
+    Factory --> Postgres[PostgreSQL Adapter]
+    Factory --> Mongo[MongoDB Adapter]
+    
+    Health[Health Monitor] --> Manager
+    Schema[Schema Manager] --> Core
+    State[State Tracker] --> Manager
+```
+
+</div>
+
+### 🧩 Key Components
+
+| Component | Purpose | Features |
+|-----------|---------|----------|
+| **Database Adapters** | Unified database interface | CRUD, search, bulk ops, schema management |
+| **Health Monitor** | Database availability tracking | Auto-detection, failover, status persistence |
+| **Schema Manager** | Dynamic schema operations | Add/remove columns, type validation, introspection |
+| **State Tracker** | Application state persistence | Last used DB, health status, user preferences |
+
+---
+
+## 🐳 Docker Deployment
+
+### 🎯 Deployment Options
+
+| Option | Use Case | Command |
+|--------|----------|---------|
+| **Full Docker** | Production, isolated environment | `docker compose --profile full up --build` |
+| **Hybrid** | Development, debugging | `docker compose up -d mysql postgres mongodb` |
+| **Scripts** | Quick setup | `./start-docker-app.sh` |
+
+### 📦 Docker Services
+
+```yaml
+Services:
+  📱 contact-manager    # Python application
+  🐬 mysql             # MySQL 8.0 (port 3306)
+  🐘 postgres          # PostgreSQL 15 (port 5433)
+  🍃 mongodb           # MongoDB 7.0 (port 27017)
+  🔧 adminer           # Database admin UI (port 8050)
+```
+
+---
+
+## 📊 Feature Showcase
+
+### 🔍 Advanced Search
+```bash
+🔍 Advanced Search
+------------------------------
+Search by name: John
+Search by phone: 555
+Search by email: @company.com
+Minimum ID: 1
+Maximum ID: 100
+
+🎯 Found 15 contact(s) matching criteria
+```
+
+### 📈 Analytics Dashboard
+```bash
+📊 Contact Analytics
+------------------------------
+📞 Total Contacts: 1,247
+📱 With Phone: 1,198 (96.1%)
+📧 With Email: 1,156 (92.7%)
+✅ Complete: 1,089 (87.3%)
+
+🌐 Top Email Domains:
+   gmail.com: 312 contacts
+   company.com: 156 contacts
+   outlook.com: 89 contacts
+```
+
+### 🔄 Bulk Operations
+```bash
+🔄 Bulk Operations
+------------------------------
+Operation: Update Department
+Contact IDs: 1,5,12,18,25
+New Value: Engineering
+✅ Updated 5 contacts successfully!
+```
+
+---
+
+## 🛠️ Development
+
+### 📋 Prerequisites
+- **Python 3.8+**
+- **Docker & Docker Compose**
+- **Git**
+
+### 🔧 Development Setup
+```bash
+# Clone repository
+git clone https://github.com/yourusername/multi-db-contact-manager-pro.git
+cd multi-db-contact-manager-pro
+
+# Setup Python environment
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# Setup pre-commit hooks (optional)
+pip install pre-commit
+pre-commit install
+
+# Run tests
+python test_all_databases.py
+```
+
+### 🧪 Testing
+```bash
+# Test all databases
+python test_all_databases.py
+
+# Test specific database
+MYSQL_HOST=localhost python test_all_databases.py
+
+# Run with verbose output
+DEBUG=1 python test_all_databases.py
+```
+
+---
+
+## 📚 Documentation
+
+| Document | Description |
+|----------|-------------|
+| **[DOCS.md](DOCS.md)** | Complete documentation with architecture, deployment, and troubleshooting |
+| **[docker.env.example](docker.env.example)** | Environment configuration template |
+| **[DOCKER_COMMANDS.txt](DOCKER_COMMANDS.txt)** | Docker command reference |
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Here's how to get started:
+
+1. **Fork** the repository
+2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
+3. **Commit** your changes (`git commit -m 'Add amazing feature'`)
+4. **Push** to the branch (`git push origin feature/amazing-feature`)
+5. **Open** a Pull Request
+
+### 🐛 Bug Reports
+Found a bug? Please open an issue with:
+- Steps to reproduce
+- Expected vs actual behavior
+- Environment details (OS, Python version, database)
+
+---
+
+## 📈 Roadmap
+
+- [ ] **Web Interface** - React-based web UI
+- [ ] **REST API** - RESTful API endpoints
+- [ ] **Authentication** - User management and permissions
+- [ ] **Cloud Databases** - AWS RDS, Azure SQL, Google Cloud SQL
+- [ ] **Import Formats** - Excel, vCard, LDAP
+- [ ] **Reporting** - Advanced analytics and charts
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🙏 Acknowledgments
+
+- **SQLAlchemy** - Database toolkit for Python
+- **PyMongo** - MongoDB driver for Python
+- **Docker** - Containerization platform
+- **Python Community** - For amazing libraries and tools
+
+---
+
+<div align="center">
+
+**⭐ Star this repo if you find it useful!**
+
+[Report Bug](https://github.com/yourusername/multi-db-contact-manager-pro/issues) • [Request Feature](https://github.com/yourusername/multi-db-contact-manager-pro/issues) • [Documentation](DOCS.md)
+
+Made with ❤️ by developers, for developers
+
+</div>

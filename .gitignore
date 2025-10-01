@@ -1,3 +1,5 @@
+/data/app_state.db
+/data/contacts.db
 # Python
 __pycache__/
 *.pyc

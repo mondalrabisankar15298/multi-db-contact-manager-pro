@@ -4,7 +4,7 @@ Handles all menu operations and user interactions for the Contact Book Manager.
 """
 
 # Import from core operations to avoid circular dependencies
-from core_operations import (add_contact, view_contacts, update_contact_name, update_contact_phone, 
+from core_operations import (add_contact, view_contacts, update_contact, update_contact_name, update_contact_phone, 
                             update_contact_email, delete_contact, search_contact, get_contact_by_id,
                             export_to_csv, export_to_json, import_from_csv, advanced_search,
                             bulk_update, bulk_delete, validate_email, 
@@ -23,41 +23,90 @@ from ui import (display_contacts, display_contact_analytics, display_database_st
                display_info, display_success, display_error)
 
 def add_contact_menu():
-    """Handle adding a new contact."""
+    """Handle adding a new contact (dynamic based on schema)."""
+    from dynamic_ui import get_contact_input_dynamic
+    
     print("\n➕ Add New Contact")
     print("-" * 30)
     
-    name = input("Enter name: ").strip()
-    if not name:
-        display_error("Name is required!")
-        return
-    
-    phone = input("Enter phone (optional): ").strip()
-    email = input("Enter email (optional): ").strip()
-    
     try:
-        add_contact(name, phone, email)
+        # Get contact data dynamically based on current schema
+        contact_data = get_contact_input_dynamic()
+        
+        # Handle aborted input flow
+        if contact_data is None:
+            display_info("Add contact cancelled.")
+            return
+        
+        if not contact_data:
+            display_error("No contact data entered!")
+            return
+        
+        # Optional server-side validation as a safety net
+        email_val = contact_data.get('email', '')
+        phone_val = contact_data.get('phone', '')
+        
+        if email_val and not validate_email(email_val):
+            display_error("Invalid email format. Please correct and try again.")
+            return
+        
+        if phone_val and not validate_phone(phone_val):
+            display_error("Invalid phone number format. Please correct and try again.")
+            return
+        
+        # Normalize phone format if provided
+        if phone_val:
+            contact_data['phone'] = format_phone(phone_val)
+        
+        # Add contact
+        add_contact(**contact_data)
         display_success("Contact added successfully!")
     except Exception as e:
         display_operation_error("adding contact", e)
 
 def view_contacts_menu():
-    """Handle viewing all contacts."""
+    """Handle viewing all contacts (dynamic based on schema)."""
+    from dynamic_ui import display_contacts_dynamic
+    
     print("\n👀 All Contacts")
     print("-" * 30)
     
-    try:
-        contacts = view_contacts()
-        display_contacts(contacts)
-    except Exception as e:
-        display_operation_error("retrieving contacts", e)
+    # Ask user for view preference
+    print("\nView options:")
+    print("0. 🔙 Back to Previous Menu")
+    print("1. Compact view (first 5 columns)")
+    print("2. Detailed view (all columns)")
+    
+    choice = input("\nSelect view (0-2, or press Enter for compact): ").strip()
+    
+    if choice == '0':
+        return
+    
+    if choice in ['1', '2', '']:
+        detailed = (choice == '2')
+        try:
+            contacts = view_contacts()
+            display_contacts_dynamic(contacts, detailed=detailed)
+        except Exception as e:
+            display_operation_error("retrieving contacts", e)
+    else:
+        display_error("Invalid choice! Please enter 0-2.")
 
 def search_contacts_menu():
     """Handle searching contacts."""
     print("\n🔍 Search Contacts")
     print("-" * 30)
+    print("0. 🔙 Back to Previous Menu")
+    print("111. 🚪 Exit Application")
     
     search_term = input("Enter search term (name, phone, or email): ").strip()
+    if search_term in ["0", "111"]:
+        if search_term == "0":
+            return
+        else:
+            print("\n👋 Thank you for using Contact Book Manager!")
+            print("Goodbye! 👋")
+            raise SystemExit(0)
     if not search_term:
         display_error("Search term is required!")
         return
@@ -95,33 +144,43 @@ def update_contact_menu():
 
         display_contact_preview(contact)
 
-        print("\nWhat would you like to update?")
-        print("1. Phone number")
-        print("2. Email address")
-        print("3. Name")
-
-        update_choice = input("Enter choice (1-3): ").strip()
-
-        if update_choice == "1":
-            new_phone = input("Enter new phone number: ").strip()
-            update_contact_phone(contact_id, new_phone)
-            display_success("Phone number updated!")
-
-        elif update_choice == "2":
-            new_email = input("Enter new email address: ").strip()
-            update_contact_email(contact_id, new_email)
-            display_success("Email address updated!")
-
-        elif update_choice == "3":
-            new_name = input("Enter new name: ").strip()
-            if not new_name:
-                display_error("Name cannot be empty!")
+        # Get field to update dynamically
+        from dynamic_ui import get_update_field_choice
+        
+        field_to_update = get_update_field_choice()
+        
+        # Handle back/cancel
+        if field_to_update is None:
+            display_info("Update cancelled.")
+            return
+        
+        # Get new value
+        field_display = field_to_update.replace('_', ' ').title()
+        new_value = input(f"\nEnter new {field_display}: ").strip()
+        
+        # Validate name cannot be empty
+        if field_to_update == 'name' and not new_value:
+            display_error("Name cannot be empty!")
+            return
+        
+        # Field-specific validation
+        if field_to_update == 'email' and new_value:
+            if not validate_email(new_value):
+                display_error("Invalid email format. Please enter a valid email.")
                 return
-            update_contact_name(contact_id, new_name)
-            display_success("Name updated!")
-
-        else:
-            display_error("Invalid choice!")
+        
+        if field_to_update == 'phone' and new_value:
+            if not validate_phone(new_value):
+                display_error("Invalid phone number. Enter 7-15 digits; separators are allowed.")
+                return
+            new_value = format_phone(new_value)
+        
+        # Update the contact
+        try:
+            update_contact(contact_id, **{field_to_update: new_value})
+            display_success(f"{field_display} updated successfully!")
+        except Exception as e:
+            display_operation_error(f"updating {field_display}", e)
 
     except EOFError:
         display_error("Input interrupted. Please try again.")
@@ -168,20 +227,46 @@ def delete_contact_menu():
         display_operation_error("deleting contact", e)
 
 def cleanup_database_menu():
-    """Handle database cleanup."""
-    print("\n🧹 Database Cleanup")
-    print("-" * 30)
+    """Handle database cleanup with multiple options."""
+    while True:
+        print("\n🧹 Database Cleanup Options")
+        print("-" * 50)
+        
+        try:
+            contacts = view_contacts()
+            contact_count = len(contacts)
+            print(f"📊 Current contacts in database: {contact_count}")
+        except:
+            contact_count = 0
+        
+        print("\nChoose cleanup type:")
+        print("0. 🔙 Back to Previous Menu")
+        print("1. 🗑️  Delete All Data (Keep table structure & columns)")
+        print("2. 🔄 Reset Table (Delete table, recreate with 4 base columns)")
+        
+        choice = input("\nEnter your choice (0-2): ").strip()
+        
+        if choice == '0':
+            return
+        elif choice == '1':
+            _delete_all_data_menu(contact_count)
+        elif choice == '2':
+            _reset_table_structure_menu(contact_count)
+        else:
+            display_error("Invalid choice! Please enter 0-2.")
+
+def _delete_all_data_menu(contact_count):
+    """Delete all data but keep table structure."""
+    print("\n🗑️ Delete All Data")
+    print("-" * 50)
     
     try:
-        contacts = view_contacts()
-        contact_count = len(contacts)
-        
         if contact_count == 0:
             display_info("Database is already empty!")
             return
         
-        print(f"📊 Current contacts in database: {contact_count}")
         display_warning("This will delete ALL contacts from the database!")
+        display_info("Table structure and custom columns will remain intact.")
         print("This action cannot be undone!")
         
         confirm1 = input("\nAre you sure you want to delete ALL contacts? (y/N): ").strip().lower()
@@ -194,14 +279,57 @@ def cleanup_database_menu():
         confirm2 = input("Type 'DELETE ALL' to confirm: ").strip()
         
         if confirm2 == 'DELETE ALL':
-            full_cleanup_db()
-            display_success("Database cleaned up successfully!")
-            print("🧹 All contacts have been removed.")
+            from core_operations import full_cleanup_db
+            result = full_cleanup_db()
+            if result:
+                display_success("All data deleted successfully!")
+                print("🧹 All contacts removed, table structure intact.")
+            else:
+                display_error("Cleanup failed!")
         else:
             display_info("Cleanup cancelled - confirmation text did not match.")
             
     except Exception as e:
         display_operation_error("cleanup", e)
+
+def _reset_table_structure_menu(contact_count):
+    """Reset table to base 4-column structure."""
+    print("\n🔄 Reset Table Structure")
+    print("-" * 50)
+    
+    try:
+        display_warning("This will DELETE the entire table and recreate it!")
+        display_warning("ALL contacts AND custom columns will be removed!")
+        display_info("Table will be recreated with only 4 base columns:")
+        print("   • id")
+        print("   • name")
+        print("   • phone")
+        print("   • email")
+        print("\nThis action cannot be undone!")
+        
+        confirm1 = input("\nAre you sure you want to RESET the table? (y/N): ").strip().lower()
+        
+        if confirm1 not in ['y', 'yes']:
+            display_info("Reset cancelled.")
+            return
+        
+        # Triple confirmation for this destructive operation
+        confirm2 = input("Type 'RESET TABLE' to confirm: ").strip()
+        
+        if confirm2 == 'RESET TABLE':
+            from core_operations import reset_table_structure
+            result = reset_table_structure()
+            if result:
+                display_success("Table reset successfully!")
+                print("🔄 Table recreated with 4 base columns.")
+                print("   All custom columns have been removed.")
+            else:
+                display_error("Table reset failed!")
+        else:
+            display_info("Reset cancelled - confirmation text did not match.")
+            
+    except Exception as e:
+        display_operation_error("table reset", e)
 
 def contact_analytics_menu():
     """Display contact analytics."""
@@ -211,27 +339,59 @@ def advanced_search_menu():
     """Handle advanced search."""
     print("\n🔍 Advanced Search")
     print("-" * 30)
+    print("0. 🔙 Back to Previous Menu")
+    print("111. 🚪 Exit Application")
     
     try:
         filters = {}
         
         name = input("Search by name (optional): ").strip()
+        if name in ["0", "111"]:
+            if name == "0":
+                return
+            print("\n👋 Thank you for using Contact Book Manager!")
+            print("Goodbye! 👋")
+            raise SystemExit(0)
         if name:
             filters['name'] = name
         
         phone = input("Search by phone (optional): ").strip()
+        if phone in ["0", "111"]:
+            if phone == "0":
+                return
+            print("\n👋 Thank you for using Contact Book Manager!")
+            print("Goodbye! 👋")
+            raise SystemExit(0)
         if phone:
             filters['phone'] = phone
         
         email = input("Search by email (optional): ").strip()
+        if email in ["0", "111"]:
+            if email == "0":
+                return
+            print("\n👋 Thank you for using Contact Book Manager!")
+            print("Goodbye! 👋")
+            raise SystemExit(0)
         if email:
             filters['email'] = email
         
         min_id = input("Minimum ID (optional): ").strip()
+        if min_id in ["0", "111"]:
+            if min_id == "0":
+                return
+            print("\n👋 Thank you for using Contact Book Manager!")
+            print("Goodbye! 👋")
+            raise SystemExit(0)
         if min_id:
             filters['min_id'] = int(min_id)
         
         max_id = input("Maximum ID (optional): ").strip()
+        if max_id in ["0", "111"]:
+            if max_id == "0":
+                return
+            print("\n👋 Thank you for using Contact Book Manager!")
+            print("Goodbye! 👋")
+            raise SystemExit(0)
         if max_id:
             filters['max_id'] = int(max_id)
         
@@ -249,13 +409,22 @@ def export_data_menu():
     """Handle data export."""
     print("\n📤 Export Data")
     print("-" * 30)
+    print("0. 🔙 Back to Previous Menu")
+    print("111. 🚪 Exit Application")
     
     try:
         print("Export format:")
         print("1. CSV")
         print("2. JSON")
         
-        format_choice = input("Enter choice (1-2): ").strip()
+        format_choice = input("Enter choice (0-2, 111): ").strip()
+        
+        if format_choice == "0":
+            return
+        if format_choice == "111":
+            print("\n👋 Thank you for using Contact Book Manager!")
+            print("Goodbye! 👋")
+            raise SystemExit(0)
         
         if format_choice == "1":
             filename = export_to_csv()
@@ -273,9 +442,17 @@ def import_data_menu():
     """Handle data import."""
     print("\n📥 Import Data")
     print("-" * 30)
+    print("0. 🔙 Back to Previous Menu")
+    print("111. 🚪 Exit Application")
     
     try:
         filename = input("Enter CSV filename to import: ").strip()
+        if filename in ["0", "111"]:
+            if filename == "0":
+                return
+            print("\n👋 Thank you for using Contact Book Manager!")
+            print("Goodbye! 👋")
+            raise SystemExit(0)
         if not filename:
             display_error("Filename is required!")
             return
@@ -290,25 +467,58 @@ def bulk_operations_menu():
     """Handle bulk operations."""
     print("\n🔄 Bulk Operations")
     print("-" * 30)
+    print("0. 🔙 Back to Previous Menu")
+    print("111. 🚪 Exit Application")
     
     try:
         print("1. Bulk Update")
         print("2. Bulk Delete")
         
-        choice = input("Enter choice (1-2): ").strip()
+        choice = input("Enter choice (0-2, 111): ").strip()
+        
+        if choice == "0":
+            return
+        if choice == "111":
+            print("\n👋 Thank you for using Contact Book Manager!")
+            print("Goodbye! 👋")
+            raise SystemExit(0)
         
         if choice == "1":
             contact_ids_input = input("Enter contact IDs (comma-separated): ").strip()
+            if contact_ids_input in ["0", "111"]:
+                if contact_ids_input == "0":
+                    return
+                print("\n👋 Thank you for using Contact Book Manager!")
+                print("Goodbye! 👋")
+                raise SystemExit(0)
             contact_ids = [int(id.strip()) for id in contact_ids_input.split(',')]
             
             field = input("Enter field to update (name/phone/email): ").strip()
+            if field in ["0", "111"]:
+                if field == "0":
+                    return
+                print("\n👋 Thank you for using Contact Book Manager!")
+                print("Goodbye! 👋")
+                raise SystemExit(0)
             new_value = input("Enter new value: ").strip()
+            if new_value in ["0", "111"]:
+                if new_value == "0":
+                    return
+                print("\n👋 Thank you for using Contact Book Manager!")
+                print("Goodbye! 👋")
+                raise SystemExit(0)
             
             updated_count = bulk_update(contact_ids, field, new_value)
             display_operation_success("Bulk update", updated_count)
             
         elif choice == "2":
             contact_ids_input = input("Enter contact IDs to delete (comma-separated): ").strip()
+            if contact_ids_input in ["0", "111"]:
+                if contact_ids_input == "0":
+                    return
+                print("\n👋 Thank you for using Contact Book Manager!")
+                print("Goodbye! 👋")
+                raise SystemExit(0)
             contact_ids = [int(id.strip()) for id in contact_ids_input.split(',')]
             
             confirm = input(f"Delete {len(contact_ids)} contacts? (y/N): ").strip().lower()
@@ -327,6 +537,8 @@ def categories_tags_menu():
     """Handle categories and tags."""
     print("\n🏷️  Categories & Tags")
     print("-" * 30)
+    print("0. 🔙 Back to Previous Menu")
+    print("111. 🚪 Exit Application")
     
     try:
         print("1. Add Category Column")
@@ -334,29 +546,30 @@ def categories_tags_menu():
         print("3. View Contacts by Category")
         print("4. View Contacts by Tag")
         
-        choice = input("Enter choice (1-4): ").strip()
+        choice = input("Enter choice (0-4, 111): ").strip()
+        
+        if choice == "0":
+            return
+        if choice == "111":
+            print("\n👋 Thank you for using Contact Book Manager!")
+            print("Goodbye! 👋")
+            raise SystemExit(0)
         
         if choice == "1":
-            # TODO: Implement add_category_column for multi-database support
-            # if add_category_column():
-            #     display_success("Category column added!")
-            # else:
-            #     display_error("Failed to add category column!")
             display_info("Category column management not yet implemented for multi-database support")
                 
         elif choice == "2":
-            # TODO: Implement add_tag_column for multi-database support
-            # if add_tag_column():
-            #     display_success("Tags column added!")
-            # else:
-            #     display_error("Failed to add tags column!")
             display_info("Tag column management not yet implemented for multi-database support")
                 
         elif choice == "3":
             category = input("Enter category: ").strip()
-            # TODO: Implement get_contacts_by_category for multi-database support
-            # contacts = get_contacts_by_category(category)
-            contacts = []  # Temporary empty list
+            if category in ["0", "111"]:
+                if category == "0":
+                    return
+                print("\n👋 Thank you for using Contact Book Manager!")
+                print("Goodbye! 👋")
+                raise SystemExit(0)
+            contacts = []
             if contacts:
                 print(f"\nContacts in category '{category}':")
                 display_contacts(contacts)
@@ -365,9 +578,13 @@ def categories_tags_menu():
                 
         elif choice == "4":
             tag = input("Enter tag: ").strip()
-            # TODO: Implement get_contacts_by_tag for multi-database support
-            # contacts = get_contacts_by_tag(tag)
-            contacts = []  # Temporary empty list
+            if tag in ["0", "111"]:
+                if tag == "0":
+                    return
+                print("\n👋 Thank you for using Contact Book Manager!")
+                print("Goodbye! 👋")
+                raise SystemExit(0)
+            contacts = []
             if contacts:
                 print(f"\nContacts with tag '{tag}':")
                 display_contacts(contacts)
@@ -383,10 +600,24 @@ def data_validation_menu():
     """Handle data validation."""
     print("\n✅ Data Validation")
     print("-" * 30)
+    print("0. 🔙 Back to Previous Menu")
+    print("111. 🚪 Exit Application")
     
     try:
         email = input("Enter email to validate: ").strip()
+        if email in ["0", "111"]:
+            if email == "0":
+                return
+            print("\n👋 Thank you for using Contact Book Manager!")
+            print("Goodbye! 👋")
+            raise SystemExit(0)
         phone = input("Enter phone to validate: ").strip()
+        if phone in ["0", "111"]:
+            if phone == "0":
+                return
+            print("\n👋 Thank you for using Contact Book Manager!")
+            print("Goodbye! 👋")
+            raise SystemExit(0)
         
         display_validation_results(email if email else None, phone if phone else None)
                 

@@ -8,8 +8,27 @@ import os
 import sys
 import builtins
 
+# Run preflight before any module touches the database manager
+try:
+    from preflight import run_preflight_and_choose_db
+    # Verbose preflight only when DEBUG=1
+    _verbose = os.environ.get("DEBUG", "0") == "1"
+    run_preflight_and_choose_db(verbose=_verbose)
+except Exception as _preflight_exc:
+    # Fail soft: continue with default env/SQLite if preflight failed
+    pass
+
 # Import from core operations only; UI/menu imports are deferred inside functions
 from core_operations import create_table
+
+# Ensure database manager aligns with preflight-selected DB
+try:
+    from config.settings import settings as _app_settings
+    from database.manager import db_manager as _dbm
+    if _dbm.current_db_type != _app_settings.get_default_database_type():
+        _dbm.switch_database(_app_settings.get_default_database_type())
+except Exception:
+    pass
 
 def is_interactive() -> bool:
     """Return True if CLI should run (TTY and not explicitly disabled)."""
@@ -41,8 +60,8 @@ def display_main_menu():
     print("6. 📊 Advanced Features")
     print("7. ⚙️  Database Management")
     print("8. 🗄️  Switch Database")
-    print("9. 🚪 Exit")
-    print("0. 🔄 Refresh Menu")
+    print("0. 🔙 Back to Previous Menu")
+    print("111. 🚪 Exit Application")
     print("="*50)
 
 def display_advanced_features_menu():
@@ -58,8 +77,8 @@ def display_advanced_features_menu():
     print("6. 🏷️  Categories & Tags")
     print("7. ✅ Data Validation")
     print("8. 🔍 Data Integrity Check")
-    print("9. 🔙 Back to Previous Menu")
-    print("0. 🚪 Exit Application")
+    print("0. 🔙 Back to Previous Menu")
+    print("111. 🚪 Exit Application")
     print("="*50)
 
 def display_database_management_menu():
@@ -68,19 +87,19 @@ def display_database_management_menu():
     print("⚙️  Database Management")
     print("="*50)
     print("1. 📊 View Database Statistics")
-    print("2. 🏗️  View Table Structure")
-    print("3. ➕ Add Column")
-    print("4. ➖ Remove Column")
-    print("5. 💾 Backup Database")
-    print("6. 🔄 Restore Database")
-    print("7. 🧹 Cleanup Database")
-    print("8. 🔙 Back to Previous Menu")
-    print("0. 🚪 Exit Application")
+    print("2. 🏗️  View Table Structure/Schema")
+    print("3. 🛠️  Column Management (Add/Remove)")
+    print("4. 💾 Backup Database")
+    print("5. 🔄 Restore Database")
+    print("6. 🧹 Cleanup Database")
+    print("0. 🔙 Back to Previous Menu")
+    print("111. 🚪 Exit Application")
     print("="*50)
 
 def display_database_selection_menu():
     """Display database selection submenu."""
     from core_operations import get_current_database_type, get_available_databases
+    from state_tracker import get_db_health_map
     from config.database_config import get_database_display_info
     
     current_db = get_current_database_type()
@@ -92,20 +111,22 @@ def display_database_selection_menu():
     print(f"Current: {current_db.upper()}")
     print("="*50)
     
+    health_map = get_db_health_map()
     for i, db_type in enumerate(available_dbs, 1):
         display_info = get_database_display_info(db_type)
-        status = "✅ ACTIVE" if db_type == current_db else ""
+        is_healthy = bool(health_map.get(db_type, 0))
+        status = "✅ ACTIVE" if db_type == current_db else ("❌ UNAVAILABLE" if not is_healthy else "")
         print(f"{i}. {display_info['emoji']} {display_info['name']} - {display_info['subtitle']} {status}")
     
-    print(f"{len(available_dbs) + 1}. 🔙 Back to Main Menu")
-    print("0. 🚪 Exit Application")
+    print("0. 🔙 Back to Previous Menu")
+    print("111. 🚪 Exit Application")
     print("="*50)
 
 def handle_advanced_features():
     """Handle advanced features submenu."""
     while True:
         display_advanced_features_menu()
-        choice = input("\nEnter your choice (0-9): ").strip()
+        choice = input("\nEnter your choice (0-8, 111): ").strip()
 
         if choice == "1":
             from menus import contact_analytics_menu
@@ -131,78 +152,82 @@ def handle_advanced_features():
         elif choice == "8":
             from menus import data_integrity_menu
             data_integrity_menu()
-        elif choice == "9":
+        elif choice == "0":
             # Back to previous menu
             return "back"
-        elif choice == "0":
+        elif choice == "111":
             print("\n👋 Thank you for using Contact Book Manager!")
             print("Goodbye! 👋")
             raise SystemExit(0)
         else:
             from ui import display_error
-            display_error("Invalid choice! Please enter 0-9.")
+            display_error("Invalid choice! Please enter 0-8 or 111.")
 
 def handle_database_management():
     """Handle database management submenu."""
     while True:
         display_database_management_menu()
-        choice = input("\nEnter your choice (0-8): ").strip()
+        choice = input("\nEnter your choice (0-6, 111): ").strip()
 
         if choice == "1":
             from ui import display_database_stats
             display_database_stats()
         elif choice == "2":
-            from ui import display_table_structure
-            display_table_structure()
+            from dynamic_ui import display_schema_info
+            display_schema_info()
+            input("\nPress Enter to continue...")
         elif choice == "3":
-            from menus import add_column_menu
-            add_column_menu()
+            from column_management_menu import column_management_menu
+            column_management_menu()
         elif choice == "4":
-            from menus import remove_column_menu
-            remove_column_menu()
-        elif choice == "5":
             from menus import backup_database_menu
             backup_database_menu()
-        elif choice == "6":
+        elif choice == "5":
             from menus import restore_database_menu
             restore_database_menu()
-        elif choice == "7":
+        elif choice == "6":
             from menus import cleanup_database_menu
             cleanup_database_menu()
-        elif choice == "8":
+        elif choice == "0":
             # Back to previous menu
             return "back"
-        elif choice == "0":
+        elif choice == "111":
             print("\n👋 Thank you for using Contact Book Manager!")
             print("Goodbye! 👋")
             raise SystemExit(0)
         else:
             from ui import display_error
-            display_error("Invalid choice! Please enter 0-8.")
+            display_error("Invalid choice! Please enter 0-6 or 111.")
 
 def handle_database_selection():
     """Handle database selection submenu."""
     from core_operations import get_available_databases, switch_database, test_database_connection
+    from state_tracker import get_db_health_map
     from config.database_config import get_database_display_info
     from ui import display_success, display_error
     
     while True:
         display_database_selection_menu()
         available_dbs = get_available_databases()
+        health_map = get_db_health_map()
         max_choice = len(available_dbs)
         
         try:
-            choice = input(f"\nEnter your choice (0-{max_choice + 1}): ").strip()
+            choice = input(f"\nEnter your choice (0-{max_choice}, 111): ").strip()
             
             if choice == "0":
+                # Back to previous menu
+                return "back"
+            elif choice == "111":
                 print("\n👋 Thank you for using Contact Book Manager!")
                 print("Goodbye! 👋")
                 raise SystemExit(0)
-            elif choice == str(max_choice + 1):
-                # Back to main menu
-                return "back"
             elif choice.isdigit() and 1 <= int(choice) <= max_choice:
                 selected_db = available_dbs[int(choice) - 1]
+                if not bool(health_map.get(selected_db, 0)):
+                    display_error(f"{selected_db.upper()} is currently unavailable (health check failed). Re-run preflight or start the service.")
+                    input("\nPress Enter to continue...")
+                    continue
                 display_info = get_database_display_info(selected_db)
                 
                 print(f"\n🔄 Switching to {display_info['name']}...")
@@ -234,7 +259,7 @@ def handle_database_selection():
                 
                 input("\nPress Enter to continue...")
             else:
-                display_error(f"Invalid choice! Please enter 0-{max_choice + 1}.")
+                display_error(f"Invalid choice! Please enter 0-{max_choice} or 111.")
                 
         except KeyboardInterrupt:
             print("\n\n👋 Goodbye!")
@@ -283,7 +308,7 @@ def main_menu_loop():
     while True:
         try:
             display_main_menu()
-            choice = input("\nEnter your choice (0-9): ").strip()
+            choice = input("\nEnter your choice (0-8, 111): ").strip()
 
             if choice == "1":
                 add_contact_menu()
@@ -313,15 +338,15 @@ def main_menu_loop():
                     continue
                 elif result == "goto_main":
                     continue
-            elif choice == "9":
+            elif choice == "0":
+                # Back on main menu just refreshes
+                continue
+            elif choice == "111":
                 print("\n👋 Thank you for using Contact Book Manager!")
                 print("Goodbye! 👋")
                 break
-            elif choice == "0":
-                print("🔄 Refreshing menu...")
-                continue
             else:
-                display_error("Invalid choice! Please enter 0-9.")
+                display_error("Invalid choice! Please enter 0-8 or 111.")
 
         except KeyboardInterrupt:
             print("\n\n👋 Goodbye!")
