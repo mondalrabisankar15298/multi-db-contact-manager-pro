@@ -8,24 +8,58 @@ from core_operations import (view_contacts, get_contact_by_id, search_contact,
                             get_contact_analytics, get_database_stats, get_table_info,
                             validate_email, validate_phone, format_phone, check_data_integrity)
 
-def display_contacts(contacts):
-    """Display contacts in a formatted way."""
+def display_contacts(contacts, detailed=False):
+    """Display contacts in a formatted way.
+    
+    Args:
+        contacts: List of contact tuples
+        detailed: If True, shows all fields. If False, shows compact view (ID, Name, Phone, Email)
+    """
     if not contacts:
         print("📭 No contacts found!")
         return
     
-    print("\n📋 Contact List:")
-    print("-" * 60)
-    print(f"{'ID':<5} {'Name':<20} {'Phone':<15} {'Email':<20}")
-    print("-" * 60)
-    
-    for contact in contacts:
-        # Handle variable number of columns and convert to strings safely
-        contact_id = str(contact[0]) if contact[0] is not None else 'N/A'
-        name = str(contact[1]) if contact[1] is not None else 'N/A'
-        phone = str(contact[2]) if len(contact) > 2 and contact[2] is not None else 'N/A'
-        email = str(contact[3]) if len(contact) > 3 and contact[3] is not None else 'N/A'
-        print(f"{contact_id:<5} {name:<20} {phone:<15} {email:<20}")
+    if detailed:
+        # Detailed view - show all fields
+        print("\n📋 Detailed Contact List:")
+        print("=" * 120)
+        
+        for i, contact in enumerate(contacts, 1):
+            contact_id = str(contact[0]) if contact[0] is not None else 'N/A'
+            name = str(contact[1]) if len(contact) > 1 and contact[1] is not None else 'N/A'
+            phone = str(contact[2]) if len(contact) > 2 and contact[2] is not None else ''
+            email = str(contact[3]) if len(contact) > 3 and contact[3] is not None else ''
+            age = str(contact[4]) if len(contact) > 4 and contact[4] is not None else '0'
+            address = str(contact[5]) if len(contact) > 5 and contact[5] is not None else 'Unknown'
+            department = str(contact[6]) if len(contact) > 6 and contact[6] is not None else 'General'
+            category = str(contact[7]) if len(contact) > 7 and contact[7] is not None else 'General'
+            tags = str(contact[8]) if len(contact) > 8 and contact[8] is not None else ''
+            
+            print(f"\n📇 Contact #{contact_id}")
+            print(f"   Name:       {name}")
+            print(f"   Phone:      {phone or '(not provided)'}")
+            print(f"   Email:      {email or '(not provided)'}")
+            print(f"   Age:        {age}")
+            print(f"   Address:    {address}")
+            print(f"   Department: {department}")
+            print(f"   Category:   {category}")
+            print(f"   Tags:       {tags or '(no tags)'}")
+            
+            if i < len(contacts):
+                print("-" * 120)
+    else:
+        # Compact view - show only main fields
+        print("\n📋 Contact List:")
+        print("-" * 60)
+        print(f"{'ID':<5} {'Name':<20} {'Phone':<15} {'Email':<20}")
+        print("-" * 60)
+        
+        for contact in contacts:
+            contact_id = str(contact[0]) if contact[0] is not None else 'N/A'
+            name = str(contact[1]) if contact[1] is not None else 'N/A'
+            phone = str(contact[2]) if len(contact) > 2 and contact[2] is not None else ''
+            email = str(contact[3]) if len(contact) > 3 and contact[3] is not None else ''
+            print(f"{contact_id:<5} {name:<20} {phone:<15} {email:<20}")
 
 def display_contact_analytics():
     """Display contact analytics."""
@@ -147,18 +181,39 @@ def display_search_results(results, search_term=""):
     display_contacts(results)
 
 def display_contact_preview(contact):
-    """Display a contact preview for confirmation."""
+    """Display a contact preview for confirmation using dynamic schema."""
     if not contact:
         print("❌ Contact not found!")
         return
 
-    # Handle variable number of columns (database may have additional columns like category, tags)
-    contact_id, name, phone, email = contact[0], contact[1], contact[2], contact[3]
-    print(f"\nContact Preview:")
-    print(f"ID: {contact_id}")
-    print(f"Name: {name}")
-    print(f"Phone: {phone or 'N/A'}")
-    print(f"Email: {email or 'N/A'}")
+    # Use dynamic schema to map tuple to dict
+    try:
+        from schema_manager import schema_manager
+        columns = schema_manager.get_table_columns()
+        contact_dict = {}
+        for i, col in enumerate(columns):
+            contact_dict[col] = contact[i] if i < len(contact) else None
+    except Exception:
+        # Fallback: minimal mapping
+        columns = ['id', 'name', 'phone', 'email']
+        contact_dict = {
+            'id': contact[0] if len(contact) > 0 else 'N/A',
+            'name': contact[1] if len(contact) > 1 else 'N/A',
+            'phone': contact[2] if len(contact) > 2 else '',
+            'email': contact[3] if len(contact) > 3 else ''
+        }
+
+    print(f"\n📇 Contact Details:")
+    for col in columns:
+        # Display ID first
+        if col == 'id':
+            print(f"   ID:         {contact_dict.get('id', 'N/A')}")
+            continue
+        
+        value = contact_dict.get(col)
+        display_value = value if value not in [None, ''] else '(not provided)'
+        col_display = col.replace('_', ' ').title()
+        print(f"   {col_display}: {display_value}")
 
 def display_operation_success(operation, count=None):
     """Display operation success message."""

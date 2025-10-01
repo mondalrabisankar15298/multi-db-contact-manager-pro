@@ -33,9 +33,13 @@ class DatabaseAdapter(ABC):
     
     # Basic CRUD Operations
     @abstractmethod
-    def add_contact(self, name: str, phone: str, email: str) -> None:
-        """Add a new contact to the database."""
+    def add_contact(self, **fields) -> None:
+        """Add a new contact to the database with dynamic fields."""
         pass
+    
+    def update_contact(self, contact_id: int, **fields) -> None:
+        """Update contact fields dynamically (optional, adapter-specific)."""
+        raise NotImplementedError("Update contact not implemented for this adapter")
     
     @abstractmethod
     def view_contacts(self) -> List[Tuple]:
@@ -145,6 +149,10 @@ class DatabaseAdapter(ABC):
     @abstractmethod
     def full_cleanup_db(self) -> bool:
         """Perform full database cleanup. Returns success status."""
+        pass
+    
+    def reset_table_structure(self) -> bool:
+        """Reset table to base 4-column structure (drop and recreate). Returns success status."""
         pass
     
     # Utility Methods

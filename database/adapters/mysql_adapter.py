@@ -78,7 +78,7 @@ class MySQLAdapter(DatabaseAdapter):
             return False
     
     def create_table(self) -> None:
-        """Create the contacts table if it doesn't exist."""
+        """Create the contacts table with minimal 4 columns."""
         if self.engine is None:
             raise ConnectionError("MySQL engine not initialized")
         
@@ -87,14 +87,7 @@ class MySQLAdapter(DatabaseAdapter):
             id INT AUTO_INCREMENT PRIMARY KEY,
             name VARCHAR(255) NOT NULL,
             phone VARCHAR(50),
-            email VARCHAR(255),
-            age INT DEFAULT 0,
-            address VARCHAR(500),
-            department VARCHAR(100) DEFAULT 'General',
-            category VARCHAR(100) DEFAULT 'General',
-            tags TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            email VARCHAR(255)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """
         
@@ -102,22 +95,32 @@ class MySQLAdapter(DatabaseAdapter):
             conn.execute(text(create_table_sql))
             conn.commit()
     
-    def add_contact(self, name: str, phone: str, email: str) -> None:
-        """Add a new contact to the database."""
+    def add_contact(self, **fields) -> None:
+        """Add a new contact to the database (dynamic fields)."""
+        if 'name' not in fields:
+            raise ValueError("Name is required")
+        
         if self.engine is None:
             raise ConnectionError("MySQL engine not initialized")
         
-        insert_sql = """
-        INSERT INTO contacts (name, phone, email) 
-        VALUES (:name, :phone, :email)
-        """
+        # Get current table columns (excluding id which is auto-increment)
+        with self.engine.connect() as conn:
+            result = conn.execute(text("SHOW COLUMNS FROM contacts"))
+            columns = [row[0] for row in result if row[0] != 'id']
+        
+        # Filter fields to only include valid columns
+        insert_fields = {k: v for k, v in fields.items() if k in columns}
+        
+        if not insert_fields:
+            raise ValueError("No valid fields to insert")
+        
+        # Build dynamic INSERT query
+        column_names = ', '.join(insert_fields.keys())
+        placeholders = ', '.join([f':{key}' for key in insert_fields.keys()])
+        query = f"INSERT INTO contacts ({column_names}) VALUES ({placeholders})"
         
         with self.engine.connect() as conn:
-            conn.execute(text(insert_sql), {
-                'name': name,
-                'phone': phone,
-                'email': email
-            })
+            conn.execute(text(query), insert_fields)
             conn.commit()
     
     def view_contacts(self) -> List[Tuple]:
@@ -143,38 +146,48 @@ class MySQLAdapter(DatabaseAdapter):
             row = result.fetchone()
             return tuple(row) if row else None
     
-    def update_contact_name(self, contact_id: int, new_name: str) -> None:
-        """Update a contact's name."""
+    def update_contact(self, contact_id: int, **fields) -> None:
+        """Update contact fields dynamically."""
+        if not fields:
+            raise ValueError("No fields to update")
+        
         if self.engine is None:
             raise ConnectionError("MySQL engine not initialized")
         
-        update_sql = "UPDATE contacts SET name = :name WHERE id = :contact_id"
+        # Get current table columns
+        with self.engine.connect() as conn:
+            result = conn.execute(text("SHOW COLUMNS FROM contacts"))
+            valid_columns = [row[0] for row in result if row[0] != 'id']
+        
+        # Filter fields to only include valid columns
+        update_fields = {k: v for k, v in fields.items() if k in valid_columns}
+        
+        if not update_fields:
+            raise ValueError("No valid fields to update")
+        
+        # Build dynamic UPDATE query
+        set_clause = ', '.join([f"{col} = :{col}" for col in update_fields.keys()])
+        query = f"UPDATE contacts SET {set_clause} WHERE id = :contact_id"
+        
+        params = update_fields.copy()
+        params['contact_id'] = contact_id
         
         with self.engine.connect() as conn:
-            conn.execute(text(update_sql), {
-                'name': new_name,
-                'contact_id': contact_id
-            })
+            conn.execute(text(query), params)
             conn.commit()
+    
+    # Backward compatibility methods
+    def update_contact_name(self, contact_id: int, new_name: str) -> None:
+        """Update a contact's name."""
+        self.update_contact(contact_id, name=new_name)
     
     def update_contact_phone(self, contact_id: int, new_phone: str) -> None:
         """Update a contact's phone number."""
-        if self.engine is None:
-            raise ConnectionError("MySQL engine not initialized")
-        
-        update_sql = "UPDATE contacts SET phone = :phone WHERE id = :contact_id"
-        
-        with self.engine.connect() as conn:
-            conn.execute(text(update_sql), {
-                'phone': new_phone,
-                'contact_id': contact_id
-            })
-            conn.commit()
+        self.update_contact(contact_id, phone=new_phone)
     
     def update_contact_email(self, contact_id: int, new_email: str) -> None:
         """Update a contact's email."""
-        if self.engine is None:
-            raise ConnectionError("MySQL engine not initialized")
+        self.update_contact(contact_id, email=new_email)
         
         update_sql = "UPDATE contacts SET email = :email WHERE id = :contact_id"
         
@@ -447,6 +460,17 @@ class MySQLAdapter(DatabaseAdapter):
             conn.execute(text(alter_query))
             conn.commit()
     
+    def remove_column(self, column_name: str) -> None:
+        """Remove a column from the contacts table."""
+        if self.engine is None:
+            raise ConnectionError("MySQL engine not initialized")
+        
+        alter_query = f"ALTER TABLE contacts DROP COLUMN {column_name}"
+        
+        with self.engine.connect() as conn:
+            conn.execute(text(alter_query))
+            conn.commit()
+    
     def backup_database(self) -> str:
         """Create a backup of the database. Returns backup filename."""
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -509,28 +533,52 @@ class MySQLAdapter(DatabaseAdapter):
             return result.rowcount
     
     def full_cleanup_db(self) -> bool:
-        """Perform full database cleanup. Returns success status."""
+        """Perform full database cleanup - DELETE ALL contacts and reset auto-increment."""
         try:
             if self.engine is None:
                 return False
             
             with self.engine.connect() as conn:
-                # Remove duplicate contacts (same name, phone, and email)
-                conn.execute(text("""
-                    DELETE c1 FROM contacts c1
-                    INNER JOIN contacts c2 
-                    WHERE c1.id > c2.id 
-                    AND c1.name = c2.name 
-                    AND c1.phone = c2.phone 
-                    AND c1.email = c2.email
-                """))
+                # Delete ALL contacts
+                conn.execute(text("DELETE FROM contacts"))
+                
+                # Reset auto-increment counter
+                conn.execute(text("ALTER TABLE contacts AUTO_INCREMENT = 1"))
                 
                 # Optimize table
                 conn.execute(text("OPTIMIZE TABLE contacts"))
                 conn.commit()
             
             return True
-        except Exception:
+        except Exception as e:
+            print(f"Cleanup error: {e}")
+            return False
+    
+    def reset_table_structure(self) -> bool:
+        """Reset table to base 4-column structure (drop and recreate)."""
+        try:
+            if self.engine is None:
+                return False
+            
+            with self.engine.connect() as conn:
+                # Drop existing table
+                conn.execute(text("DROP TABLE IF EXISTS contacts"))
+                
+                # Recreate table with only 4 base columns
+                conn.execute(text("""
+                    CREATE TABLE contacts (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        name VARCHAR(255) NOT NULL,
+                        phone VARCHAR(50),
+                        email VARCHAR(255)
+                    )
+                """))
+                
+                conn.commit()
+            
+            return True
+        except Exception as e:
+            print(f"Reset table error: {e}")
             return False
     
     def close_connection(self):

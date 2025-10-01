@@ -6,6 +6,7 @@ from typing import Optional, Dict, Any
 from .base import DatabaseAdapter
 from .factory import DatabaseFactory
 from config.settings import settings
+from state_tracker import set_last_db_type
 
 
 class DatabaseManager:
@@ -65,6 +66,11 @@ class DatabaseManager:
             
             # Update global settings
             settings.set_default_database_type(db_type)
+            # Persist as last used for future sessions
+            try:
+                set_last_db_type(db_type)
+            except Exception:
+                pass
             
             # Close old connection if it exists
             if old_adapter and hasattr(old_adapter, 'close_connection'):

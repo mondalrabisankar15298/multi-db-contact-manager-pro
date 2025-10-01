@@ -477,8 +477,13 @@ validator = DataValidator()
 def create_table():
     return db_manager.current_adapter.create_table()
 
-def add_contact(name, phone, email):
-    return db_manager.current_adapter.add_contact(name, phone, email)
+def add_contact(**fields):
+    """Add contact with dynamic fields."""
+    return db_manager.current_adapter.add_contact(**fields)
+
+def update_contact(contact_id, **fields):
+    """Update contact with dynamic fields."""
+    return db_manager.current_adapter.update_contact(contact_id, **fields)
 
 def view_contacts():
     return db_manager.current_adapter.view_contacts()
@@ -542,6 +547,10 @@ def cleanup_db():
 
 def full_cleanup_db():
     return db_manager.current_adapter.full_cleanup_db()
+
+def reset_table_structure():
+    """Reset table to base 4-column structure (deletes table and recreates)."""
+    return db_manager.current_adapter.reset_table_structure()
 
 def validate_email(email):
     return validator.validate_email(email)

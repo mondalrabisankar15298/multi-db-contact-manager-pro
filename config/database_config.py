@@ -5,6 +5,21 @@ Database configuration settings for all supported database types.
 import os
 from typing import Dict, Any
 
+# Load environment variables from env files when running locally (outside Docker)
+try:
+    from dotenv import load_dotenv  # type: ignore
+    _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    _DOCKER_ENV_PATH = os.path.join(_PROJECT_ROOT, 'docker.env')
+    _DOTENV_PATH = os.path.join(_PROJECT_ROOT, '.env')
+    # Load docker.env first, then .env (later files do not override earlier by default)
+    if os.path.exists(_DOCKER_ENV_PATH):
+        load_dotenv(_DOCKER_ENV_PATH)
+    if os.path.exists(_DOTENV_PATH):
+        load_dotenv(_DOTENV_PATH)
+except Exception:
+    # Safe fallback if python-dotenv is not available or any error occurs
+    pass
+
 # Load environment variables
 def get_env(key: str, default: str = "") -> str:
     """Get environment variable with default value."""
@@ -13,7 +28,7 @@ def get_env(key: str, default: str = "") -> str:
 # Database configurations for all supported types
 DATABASE_CONFIGS: Dict[str, Dict[str, Any]] = {
     "sqlite": {
-        "path": get_env("SQLITE_PATH", "contacts.db"),
+        "path": get_env("SQLITE_PATH", "data/contacts.db"),
         "description": "SQLite (File-based, No server required)"
     },
     
@@ -29,7 +44,7 @@ DATABASE_CONFIGS: Dict[str, Dict[str, Any]] = {
     
     "postgres": {
         "host": get_env("POSTGRES_HOST", "localhost"),
-        "port": int(get_env("POSTGRES_PORT", "5432")),
+        "port": int(get_env("POSTGRES_PORT", "5433")),  # Fixed: Docker uses 5433
         "user": get_env("POSTGRES_USER", "contact_user"),
         "password": get_env("POSTGRES_PASSWORD", "contact_password"),
         "database": get_env("POSTGRES_DATABASE", "contacts"),
@@ -39,7 +54,10 @@ DATABASE_CONFIGS: Dict[str, Dict[str, Any]] = {
     "mongodb": {
         "host": get_env("MONGO_HOST", "localhost"),
         "port": int(get_env("MONGO_PORT", "27017")),
+        "user": get_env("MONGO_USER", ""),  # No auth by default in Docker
+        "password": get_env("MONGO_PASSWORD", ""),  # No auth by default in Docker
         "database": get_env("MONGO_DATABASE", "contacts"),
+        "auth_database": get_env("MONGO_AUTH_DATABASE", "admin"),
         "collection": "contacts",
         "description": "MongoDB (Document-based NoSQL)"
     }

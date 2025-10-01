@@ -6,6 +6,8 @@ from typing import Dict, Any
 from .base import DatabaseAdapter
 from .adapters.sqlite_adapter import SQLiteAdapter
 from .adapters.mysql_adapter import MySQLAdapter
+from .adapters.postgres_adapter import PostgreSQLAdapter
+from .adapters.mongo_adapter import MongoDBAdapter
 from config.database_config import get_database_config
 
 
@@ -16,8 +18,14 @@ class DatabaseFactory:
     _adapters = {
         'sqlite': SQLiteAdapter,
         'mysql': MySQLAdapter,
-        # PostgreSQL and MongoDB adapters will be added in later phases
+        'postgres': PostgreSQLAdapter,
+        'postgresql': PostgreSQLAdapter,  # Alias (internal use only)
+        'mongodb': MongoDBAdapter,
+        'mongo': MongoDBAdapter,  # Alias (internal use only)
     }
+    
+    # Primary database types to show in menu (excludes aliases)
+    _primary_types = ['sqlite', 'mysql', 'postgres', 'mongodb']
     
     @classmethod
     def create_adapter(cls, db_type: str, config: Dict[str, Any] = None) -> DatabaseAdapter:
@@ -48,8 +56,8 @@ class DatabaseFactory:
     
     @classmethod
     def get_available_types(cls) -> list:
-        """Get list of available database types."""
-        return list(cls._adapters.keys())
+        """Get list of available database types (primary only, no aliases)."""
+        return cls._primary_types
     
     @classmethod
     def register_adapter(cls, db_type: str, adapter_class: type) -> None:
