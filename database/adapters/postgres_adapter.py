@@ -1,13 +1,11 @@
 """
-SQLite database adapter.
-Wraps the existing ContactDatabase class to implement the DatabaseAdapter interface.
+PostgreSQL database adapter using psycopg2.
 """
 
-import sqlite3
+import psycopg2
+from psycopg2.extras import RealDictCursor
 import csv
 import json
-import re
-import shutil
 import datetime
 import os
 from typing import List, Dict, Any, Optional, Tuple
@@ -15,26 +13,39 @@ from typing import List, Dict, Any, Optional, Tuple
 from ..base import DatabaseAdapter
 
 
-class SQLiteAdapter(DatabaseAdapter):
-    """SQLite implementation of the DatabaseAdapter interface."""
+class PostgreSQLAdapter(DatabaseAdapter):
+    """PostgreSQL implementation of the DatabaseAdapter interface."""
     
     def __init__(self, config: Dict[str, Any]):
-        """Initialize SQLite adapter with configuration."""
+        """Initialize PostgreSQL adapter with configuration."""
         super().__init__(config)
-        self.db_path = config.get('path', 'contacts.db')
+        self.host = config.get('host', 'localhost')
+        self.port = config.get('port', 5432)
+        self.user = config.get('user', 'contact_user')
+        self.password = config.get('password', 'contact_password')
+        self.database = config.get('database', 'contacts')
     
     def get_connection(self):
-        """Create and return a SQLite database connection."""
-        return sqlite3.connect(self.db_path)
+        """Create and return a PostgreSQL database connection."""
+        return psycopg2.connect(
+            host=self.host,
+            port=self.port,
+            user=self.user,
+            password=self.password,
+            dbname=self.database
+        )
     
     def test_connection(self) -> bool:
-        """Test if the SQLite database connection is working."""
+        """Test if the PostgreSQL database connection is working."""
         try:
             conn = self.get_connection()
-            conn.execute("SELECT 1")
+            cursor = conn.cursor()
+            cursor.execute("SELECT 1")
+            cursor.close()
             conn.close()
             return True
-        except Exception:
+        except Exception as e:
+            print(f"PostgreSQL connection test failed: {e}")
             return False
     
     def create_table(self) -> None:
@@ -43,13 +54,14 @@ class SQLiteAdapter(DatabaseAdapter):
         cursor = conn.cursor()
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS contacts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            phone TEXT,
-            email TEXT
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            phone VARCHAR(50),
+            email VARCHAR(255)
         )
         """)
         conn.commit()
+        cursor.close()
         conn.close()
     
     def add_contact(self, **fields) -> None:
@@ -60,33 +72,38 @@ class SQLiteAdapter(DatabaseAdapter):
         conn = self.get_connection()
         cursor = conn.cursor()
         
-        # Get current table columns (excluding id which is auto-increment)
-        cursor.execute("PRAGMA table_info(contacts)")
-        table_info = cursor.fetchall()
-        valid_columns = [col[1] for col in table_info if col[1] != 'id']
+        # Get current table columns
+        cursor.execute("""
+            SELECT column_name FROM information_schema.columns 
+            WHERE table_name = 'contacts' AND column_name != 'id'
+        """)
+        valid_columns = [row[0] for row in cursor.fetchall()]
         
         # Filter fields to only include valid columns
         insert_fields = {k: v for k, v in fields.items() if k in valid_columns}
         
         if not insert_fields:
+            cursor.close()
             conn.close()
             raise ValueError("No valid fields to insert")
         
         # Build dynamic INSERT query
         columns = ', '.join(insert_fields.keys())
-        placeholders = ', '.join(['?' for _ in insert_fields])
+        placeholders = ', '.join(['%s' for _ in insert_fields])
         query = f"INSERT INTO contacts ({columns}) VALUES ({placeholders})"
         
         cursor.execute(query, tuple(insert_fields.values()))
         conn.commit()
+        cursor.close()
         conn.close()
     
     def view_contacts(self) -> List[Tuple]:
         """Retrieve all contacts from the database."""
         conn = self.get_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM contacts")
+        cursor.execute("SELECT * FROM contacts ORDER BY id")
         rows = cursor.fetchall()
+        cursor.close()
         conn.close()
         return rows
     
@@ -94,8 +111,9 @@ class SQLiteAdapter(DatabaseAdapter):
         """Get a specific contact by ID."""
         conn = self.get_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM contacts WHERE id = ?", (contact_id,))
+        cursor.execute("SELECT * FROM contacts WHERE id = %s", (contact_id,))
         row = cursor.fetchone()
+        cursor.close()
         conn.close()
         return row
     
@@ -108,24 +126,28 @@ class SQLiteAdapter(DatabaseAdapter):
         cursor = conn.cursor()
         
         # Get current table columns
-        cursor.execute("PRAGMA table_info(contacts)")
-        table_info = cursor.fetchall()
-        valid_columns = [col[1] for col in table_info if col[1] != 'id']
+        cursor.execute("""
+            SELECT column_name FROM information_schema.columns 
+            WHERE table_name = 'contacts' AND column_name != 'id'
+        """)
+        valid_columns = [row[0] for row in cursor.fetchall()]
         
         # Filter fields to only include valid columns
         update_fields = {k: v for k, v in fields.items() if k in valid_columns}
         
         if not update_fields:
+            cursor.close()
             conn.close()
             raise ValueError("No valid fields to update")
         
         # Build dynamic UPDATE query
-        set_clause = ', '.join([f"{col} = ?" for col in update_fields.keys()])
-        query = f"UPDATE contacts SET {set_clause} WHERE id = ?"
+        set_clause = ', '.join([f"{col} = %s" for col in update_fields.keys()])
+        query = f"UPDATE contacts SET {set_clause} WHERE id = %s"
         
         values = list(update_fields.values()) + [contact_id]
         cursor.execute(query, values)
         conn.commit()
+        cursor.close()
         conn.close()
     
     # Backward compatibility methods
@@ -145,19 +167,23 @@ class SQLiteAdapter(DatabaseAdapter):
         """Delete a contact from the database."""
         conn = self.get_connection()
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM contacts WHERE id = ?", (contact_id,))
+        cursor.execute("DELETE FROM contacts WHERE id = %s", (contact_id,))
         conn.commit()
+        cursor.close()
         conn.close()
     
     def search_contact(self, search_term: str) -> List[Tuple]:
         """Search for contacts by name, phone, or email."""
         conn = self.get_connection()
         cursor = conn.cursor()
+        search_pattern = f"%{search_term}%"
         cursor.execute("""
             SELECT * FROM contacts 
-            WHERE name LIKE ? OR phone LIKE ? OR email LIKE ?
-        """, (f"%{search_term}%", f"%{search_term}%", f"%{search_term}%"))
+            WHERE name ILIKE %s OR phone ILIKE %s OR email ILIKE %s
+            ORDER BY id
+        """, (search_pattern, search_pattern, search_pattern))
         rows = cursor.fetchall()
+        cursor.close()
         conn.close()
         return rows
     
@@ -170,31 +196,33 @@ class SQLiteAdapter(DatabaseAdapter):
         params = []
         
         if filters.get('name'):
-            where_conditions.append("name LIKE ?")
+            where_conditions.append("name ILIKE %s")
             params.append(f"%{filters['name']}%")
         
         if filters.get('phone'):
-            where_conditions.append("phone LIKE ?")
+            where_conditions.append("phone ILIKE %s")
             params.append(f"%{filters['phone']}%")
         
         if filters.get('email'):
-            where_conditions.append("email LIKE ?")
+            where_conditions.append("email ILIKE %s")
             params.append(f"%{filters['email']}%")
         
         if filters.get('min_id'):
-            where_conditions.append("id >= ?")
+            where_conditions.append("id >= %s")
             params.append(filters['min_id'])
         
         if filters.get('max_id'):
-            where_conditions.append("id <= ?")
+            where_conditions.append("id <= %s")
             params.append(filters['max_id'])
         
         query = "SELECT * FROM contacts"
         if where_conditions:
             query += " WHERE " + " AND ".join(where_conditions)
+        query += " ORDER BY id"
         
         cursor.execute(query, params)
         rows = cursor.fetchall()
+        cursor.close()
         conn.close()
         return rows
     
@@ -203,9 +231,8 @@ class SQLiteAdapter(DatabaseAdapter):
         contacts = self.view_contacts()
         with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
             writer = csv.writer(csvfile)
-            # Write header
-            writer.writerow(['ID', 'Name', 'Phone', 'Email', 'Age', 'Address', 'Department', 'Category', 'Tags'])
-            # Write contacts
+            writer.writerow(['ID', 'Name', 'Phone', 'Email', 'Age', 'Address', 
+                           'Department', 'Category', 'Tags', 'Created At', 'Updated At'])
             for contact in contacts:
                 writer.writerow(contact)
     
@@ -220,10 +247,9 @@ class SQLiteAdapter(DatabaseAdapter):
                 'phone': contact[2],
                 'email': contact[3]
             }
-            # Add additional fields if they exist
             if len(contact) > 4:
                 contact_dict.update({
-                    'age': contact[4] if len(contact) > 4 else 0,
+                    'age': contact[4],
                     'address': contact[5] if len(contact) > 5 else 'Unknown',
                     'department': contact[6] if len(contact) > 6 else 'General',
                     'category': contact[7] if len(contact) > 7 else 'General',
@@ -232,7 +258,7 @@ class SQLiteAdapter(DatabaseAdapter):
             contacts_list.append(contact_dict)
         
         with open(filename, 'w', encoding='utf-8') as jsonfile:
-            json.dump(contacts_list, jsonfile, indent=2, ensure_ascii=False)
+            json.dump(contacts_list, jsonfile, indent=2, ensure_ascii=False, default=str)
     
     def import_from_csv(self, filename: str) -> int:
         """Import contacts from CSV file. Returns number of imported contacts."""
@@ -248,7 +274,7 @@ class SQLiteAdapter(DatabaseAdapter):
                     )
                     imported_count += 1
                 except Exception:
-                    continue  # Skip invalid rows
+                    continue
         return imported_count
     
     def bulk_update(self, contact_ids: List[int], field: str, new_value: str) -> int:
@@ -259,12 +285,13 @@ class SQLiteAdapter(DatabaseAdapter):
         conn = self.get_connection()
         cursor = conn.cursor()
         
-        placeholders = ','.join(['?' for _ in contact_ids])
-        query = f"UPDATE contacts SET {field} = ? WHERE id IN ({placeholders})"
+        placeholders = ','.join(['%s' for _ in contact_ids])
+        query = f"UPDATE contacts SET {field} = %s, updated_at = CURRENT_TIMESTAMP WHERE id IN ({placeholders})"
         
         cursor.execute(query, [new_value] + contact_ids)
         updated_count = cursor.rowcount
         conn.commit()
+        cursor.close()
         conn.close()
         return updated_count
     
@@ -276,12 +303,13 @@ class SQLiteAdapter(DatabaseAdapter):
         conn = self.get_connection()
         cursor = conn.cursor()
         
-        placeholders = ','.join(['?' for _ in contact_ids])
+        placeholders = ','.join(['%s' for _ in contact_ids])
         query = f"DELETE FROM contacts WHERE id IN ({placeholders})"
         
         cursor.execute(query, contact_ids)
         deleted_count = cursor.rowcount
         conn.commit()
+        cursor.close()
         conn.close()
         return deleted_count
     
@@ -302,7 +330,7 @@ class SQLiteAdapter(DatabaseAdapter):
         cursor.execute("SELECT COUNT(*) FROM contacts WHERE email IS NOT NULL AND email != ''")
         contacts_with_email = cursor.fetchone()[0]
         
-        # Complete contacts (have both phone and email)
+        # Complete contacts
         cursor.execute("""
             SELECT COUNT(*) FROM contacts 
             WHERE phone IS NOT NULL AND phone != '' 
@@ -312,7 +340,7 @@ class SQLiteAdapter(DatabaseAdapter):
         
         # Email domains
         cursor.execute("""
-            SELECT SUBSTR(email, INSTR(email, '@') + 1) as domain, COUNT(*) as count
+            SELECT SUBSTRING(email FROM POSITION('@' IN email) + 1) as domain, COUNT(*) as count
             FROM contacts 
             WHERE email IS NOT NULL AND email != '' AND email LIKE '%@%'
             GROUP BY domain 
@@ -321,6 +349,7 @@ class SQLiteAdapter(DatabaseAdapter):
         """)
         email_domains = cursor.fetchall()
         
+        cursor.close()
         conn.close()
         
         return {
@@ -339,34 +368,43 @@ class SQLiteAdapter(DatabaseAdapter):
         conn = self.get_connection()
         cursor = conn.cursor()
         
-        # Get database file size
-        db_size = os.path.getsize(self.db_path) if os.path.exists(self.db_path) else 0
-        
-        # Get table count
+        # Get record count
         cursor.execute("SELECT COUNT(*) FROM contacts")
         record_count = cursor.fetchone()[0]
         
-        # Get database info
-        cursor.execute("PRAGMA database_list")
-        db_info = cursor.fetchall()
+        # Get database size
+        cursor.execute("""
+            SELECT pg_database_size(current_database()) as db_size
+        """)
+        db_size = cursor.fetchone()[0]
         
+        cursor.close()
         conn.close()
         
         return {
-            'database_type': 'SQLite',
-            'database_path': self.db_path,
+            'database_type': 'PostgreSQL',
+            'database_name': self.database,
             'database_size_bytes': db_size,
             'database_size_mb': round(db_size / (1024 * 1024), 2),
-            'record_count': record_count,
-            'database_info': db_info
+            'record_count': record_count
         }
     
     def get_table_info(self) -> List[Tuple]:
         """Get table structure information."""
         conn = self.get_connection()
         cursor = conn.cursor()
-        cursor.execute("PRAGMA table_info(contacts)")
+        cursor.execute("""
+            SELECT 
+                column_name, 
+                data_type, 
+                is_nullable,
+                column_default
+            FROM information_schema.columns 
+            WHERE table_name = 'contacts'
+            ORDER BY ordinal_position
+        """)
         table_info = cursor.fetchall()
+        cursor.close()
         conn.close()
         return table_info
     
@@ -375,7 +413,6 @@ class SQLiteAdapter(DatabaseAdapter):
         conn = self.get_connection()
         cursor = conn.cursor()
         
-        # Build ALTER TABLE statement
         alter_query = f"ALTER TABLE contacts ADD COLUMN {column_name} {column_type}"
         if default_value is not None:
             if isinstance(default_value, str):
@@ -385,73 +422,48 @@ class SQLiteAdapter(DatabaseAdapter):
         
         cursor.execute(alter_query)
         conn.commit()
+        cursor.close()
         conn.close()
     
     def remove_column(self, column_name: str) -> None:
-        """Remove a column from the contacts table (SQLite requires table recreation)."""
+        """Remove a column from the contacts table."""
         conn = self.get_connection()
         cursor = conn.cursor()
         
-        # Get current table structure
-        cursor.execute("PRAGMA table_info(contacts)")
-        columns = cursor.fetchall()
+        alter_query = f"ALTER TABLE contacts DROP COLUMN {column_name}"
         
-        # Build new column list (excluding the column to remove)
-        new_columns = [col for col in columns if col[1] != column_name]
-        
-        if len(new_columns) == len(columns):
-            # Column doesn't exist
-            conn.close()
-            raise ValueError(f"Column '{column_name}' does not exist")
-        
-        # Build new table definition
-        col_defs = []
-        col_names = []
-        for col in new_columns:
-            col_name = col[1]
-            col_type = col[2]
-            col_notnull = col[3]
-            col_default = col[4]
-            col_pk = col[5]
-            
-            col_def = f"{col_name} {col_type}"
-            if col_pk:
-                col_def += " PRIMARY KEY AUTOINCREMENT"
-            if col_notnull and not col_pk:
-                col_def += " NOT NULL"
-            if col_default is not None:
-                col_def += f" DEFAULT {col_default}"
-            
-            col_defs.append(col_def)
-            col_names.append(col_name)
-        
-        # Create new table
-        create_sql = f"CREATE TABLE contacts_new ({', '.join(col_defs)})"
-        cursor.execute(create_sql)
-        
-        # Copy data
-        cols_str = ', '.join(col_names)
-        cursor.execute(f"INSERT INTO contacts_new ({cols_str}) SELECT {cols_str} FROM contacts")
-        
-        # Drop old table and rename new one
-        cursor.execute("DROP TABLE contacts")
-        cursor.execute("ALTER TABLE contacts_new RENAME TO contacts")
-        
+        cursor.execute(alter_query)
         conn.commit()
+        cursor.close()
         conn.close()
     
     def backup_database(self) -> str:
         """Create a backup of the database. Returns backup filename."""
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_filename = f"contacts_backup_{timestamp}.db"
+        backup_filename = f"contacts_backup_{timestamp}.sql"
         backup_path = os.path.join("db_backup", backup_filename)
         
-        # Create backup directory if it doesn't exist
         os.makedirs("db_backup", exist_ok=True)
         
-        # Copy database file
-        shutil.copy2(self.db_path, backup_path)
-        return backup_filename
+        # Use pg_dump command
+        import subprocess
+        cmd = [
+            'pg_dump',
+            '-h', self.host,
+            '-p', str(self.port),
+            '-U', self.user,
+            '-d', self.database,
+            '-f', backup_path
+        ]
+        
+        env = os.environ.copy()
+        env['PGPASSWORD'] = self.password
+        
+        try:
+            subprocess.run(cmd, env=env, check=True)
+            return backup_filename
+        except subprocess.CalledProcessError:
+            raise Exception("Backup failed. Make sure pg_dump is installed.")
     
     def restore_database(self, backup_filename: str) -> bool:
         """Restore database from backup. Returns success status."""
@@ -459,22 +471,35 @@ class SQLiteAdapter(DatabaseAdapter):
         if not os.path.exists(backup_path):
             return False
         
+        import subprocess
+        cmd = [
+            'psql',
+            '-h', self.host,
+            '-p', str(self.port),
+            '-U', self.user,
+            '-d', self.database,
+            '-f', backup_path
+        ]
+        
+        env = os.environ.copy()
+        env['PGPASSWORD'] = self.password
+        
         try:
-            shutil.copy2(backup_path, self.db_path)
+            subprocess.run(cmd, env=env, check=True)
             return True
-        except Exception:
+        except subprocess.CalledProcessError:
             return False
     
     def cleanup_db(self) -> int:
-        """Clean up database (remove empty records, etc.). Returns number of cleaned records."""
+        """Clean up database (remove empty records). Returns number of cleaned records."""
         conn = self.get_connection()
         cursor = conn.cursor()
         
-        # Remove contacts with empty names
         cursor.execute("DELETE FROM contacts WHERE name IS NULL OR name = ''")
         cleaned_count = cursor.rowcount
         
         conn.commit()
+        cursor.close()
         conn.close()
         return cleaned_count
     
@@ -487,15 +512,19 @@ class SQLiteAdapter(DatabaseAdapter):
             # Delete ALL contacts
             cursor.execute("DELETE FROM contacts")
             
-            # Reset auto-increment counter
-            cursor.execute("DELETE FROM sqlite_sequence WHERE name='contacts'")
+            # Reset auto-increment sequence
+            cursor.execute("ALTER SEQUENCE contacts_id_seq RESTART WITH 1")
             
             conn.commit()
+            cursor.close()
             conn.close()
             
-            # VACUUM needs to be run outside of a transaction
-            conn = sqlite3.connect(self.db_path)
-            conn.execute("VACUUM")
+            # Vacuum needs to be in autocommit mode
+            conn = self.get_connection()
+            conn.autocommit = True
+            cursor = conn.cursor()
+            cursor.execute("VACUUM ANALYZE contacts")
+            cursor.close()
             conn.close()
             
             return True
@@ -509,31 +538,33 @@ class SQLiteAdapter(DatabaseAdapter):
             conn = self.get_connection()
             cursor = conn.cursor()
             
-            # Drop existing table
-            cursor.execute("DROP TABLE IF EXISTS contacts")
-            
-            # Drop from sqlite_sequence to reset ID counter
-            cursor.execute("DELETE FROM sqlite_sequence WHERE name='contacts'")
+            # Drop existing table (CASCADE drops the sequence too)
+            cursor.execute("DROP TABLE IF EXISTS contacts CASCADE")
             
             # Recreate table with only 4 base columns
             cursor.execute("""
                 CREATE TABLE contacts (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT NOT NULL,
-                    phone TEXT,
-                    email TEXT
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(255) NOT NULL,
+                    phone VARCHAR(50),
+                    email VARCHAR(255)
                 )
             """)
             
             conn.commit()
+            cursor.close()
             conn.close()
             
-            # VACUUM to reclaim space
-            conn = sqlite3.connect(self.db_path)
-            conn.execute("VACUUM")
+            # Vacuum to reclaim space
+            conn = self.get_connection()
+            conn.autocommit = True
+            cursor = conn.cursor()
+            cursor.execute("VACUUM ANALYZE contacts")
+            cursor.close()
             conn.close()
             
             return True
         except Exception as e:
             print(f"Reset table error: {e}")
             return False
+
