@@ -1,0 +1,122 @@
+"""
+Input Helpers - centralizes input handling for interactive and scripted modes.
+"""
+
+import os
+import builtins
+
+# Module-level scripted input support: reads lines from CONTACT_MANAGER_INPUT_SCRIPT if set
+_SCRIPT_LINES = None
+_SCRIPT_ITER = None
+_PROVIDER = None
+
+
+class InputProvider:
+    """Interface for input providers."""
+    def get(self, prompt: str = "") -> str:  # pragma: no cover - interface
+        return builtins.input(prompt)
+
+
+class ScriptInputProvider(InputProvider):
+    def __init__(self, lines):
+        self._iter = iter(lines or [])
+    def get(self, prompt: str = "") -> str:
+        try:
+            return next(self._iter)
+        except StopIteration:
+            print("\n[Script completed]")
+            raise SystemExit(0)
+
+
+def set_input_provider(provider: InputProvider) -> None:
+    global _PROVIDER
+    _PROVIDER = provider
+
+def _init_script_if_needed():
+    global _SCRIPT_LINES, _SCRIPT_ITER
+    if _SCRIPT_LINES is not None:
+        return
+    script_path = os.environ.get("CONTACT_MANAGER_INPUT_SCRIPT")
+    if not script_path:
+        _SCRIPT_LINES = []
+        _SCRIPT_ITER = iter(_SCRIPT_LINES)
+        return
+    try:
+        with open(script_path, 'r', encoding='utf-8') as f:
+            _SCRIPT_LINES = [line.rstrip('\n') for line in f]
+        _SCRIPT_ITER = iter(_SCRIPT_LINES)
+        print(f"[InputHelpers] Script mode enabled with {_SCRIPT_LINES.__len__()} lines from {script_path}")
+    except Exception as e:
+        _SCRIPT_LINES = []
+        _SCRIPT_ITER = iter(_SCRIPT_LINES)
+        print(f"[InputHelpers] Failed to load script '{script_path}': {e}")
+
+
+def get_user_input(prompt: str, input_type: str = "str", required: bool = True):
+    """Get user input with validation."""
+    while True:
+        try:
+            value = safe_get_input(f"{prompt}: ").strip()
+            
+            # Handle cancellation
+            if value.lower() in ('q', 'quit', 'cancel', 'abort', 'back') or value == '0':
+                return None
+            if value == '111':
+                print("\n👋 Thank you for using Contact Book Manager!")
+                exit()
+            
+            # Handle empty input
+            if not value:
+                if not required:
+                    return None
+                print("This field is required. Please enter a value.")
+                continue
+            
+            # Type conversion
+            if input_type == "int":
+                return int(value)
+            elif input_type == "float":
+                return float(value)
+            else:
+                return value
+                
+        except ValueError:
+            print(f"Invalid {input_type}. Please try again.")
+        except KeyboardInterrupt:
+            return None
+
+def get_yes_no_input(prompt: str) -> bool:
+    """Get yes/no input from user."""
+    while True:
+        try:
+            response = safe_get_input(f"{prompt} (y/N): ").strip().lower()
+            if response in ['y', 'yes']:
+                return True
+            elif response in ['n', 'no', '']:
+                return False
+            else:
+                print("Please enter 'y' for yes or 'n' for no.")
+        except KeyboardInterrupt:
+            return False
+
+def safe_get_input(prompt: str = "") -> str:
+    """Get input from either a script (if configured) or interactively.
+
+    Raises SystemExit when input stream/script is exhausted to avoid infinite loops.
+    """
+    if _PROVIDER is not None:
+        return _PROVIDER.get(prompt)
+    _init_script_if_needed()
+    if _SCRIPT_LINES:
+        try:
+            return next(_SCRIPT_ITER)
+        except StopIteration:
+            print("\n[Script completed]")
+            raise SystemExit(0)
+    try:
+        return builtins.input(prompt)
+    except EOFError:
+        print("\n[No more input available – exiting]")
+        raise SystemExit(0)
+
+
