@@ -52,6 +52,9 @@ python main.py
 # For full Docker deployment
 ./start-docker-app.sh
 
+# Stop all services
+./stop-docker-app.sh
+
 # OR for databases only (run app locally)
 ./start-databases-only.sh
 python main.py
@@ -90,16 +93,30 @@ POSTGRES_PASSWORD=contact_password
 MONGO_HOST=localhost
 MONGO_PORT=27017
 MONGO_DATABASE=contacts
+
+# Application Settings
+DEBUG=0                       # 0=normal, 1=verbose logging
+CONTACT_MANAGER_DISABLE_UI=0  # 0=enable UI, 1=headless mode
+APP_STATE_DB_PATH=data/app_state.db
+
+# Backup Configuration
+AUTO_BACKUP=0                 # 0=disabled, 1=enabled
+BACKUP_INTERVAL_HOURS=24      # Hours between backups
+
+# Timezone Configuration
+DISPLAY_TIMEZONE=Asia/Kolkata # Set your preferred timezone for timestamp display
 ```
 
 ## 🏗️ Dynamic Schema Management
 
 ### Core Schema
-All databases maintain a consistent 4-column base schema:
+All databases maintain a consistent 6-column base schema:
 - `id` - Auto-increment primary key
 - `name` - Contact name (required)
 - `phone` - Phone number (optional)
 - `email` - Email address (optional)
+- `created_at` - Timestamp when contact was created (auto-generated)
+- `updated_at` - Timestamp when contact was last modified (auto-updated)
 
 ### Dynamic Columns
 Add custom fields dynamically:
@@ -123,20 +140,26 @@ Supported column types:
 - 🗑️ **Delete** - Remove contacts with confirmation
 
 ### Advanced Features
-- 📊 **Analytics** - Contact statistics and reporting
-- 🔍 **Advanced Search** - Multi-criteria filtering
-- 📤 **Export** - CSV and JSON export
-- 📥 **Import** - CSV import with validation
-- 🔄 **Bulk Operations** - Update/delete multiple contacts
-- ✅ **Data Validation** - Email and phone validation
+- 📈 **Contact Analytics** - Contact statistics and reporting
+- 🔍 **Advanced Search** - Multi-criteria filtering with complex queries
+- 📤 **Export Data** - CSV and JSON export with full data integrity
+- 📥 **Import Data** - CSV import with validation and error reporting
+- 🔄 **Bulk Operations** - Update/delete multiple contacts efficiently
+- 🏷️ **Categories & Tags** - Organize contacts with categories and tags
+- ✅ **Data Validation** - Comprehensive email and phone validation
+- 🔍 **Data Integrity Check** - Verify database consistency and health
+- 🎲 **Insert Dummy Data** - Generate test data for development and testing
+- 🔒 **Check Duplicates** - Identify and manage duplicate contacts
 
 ### Database Management
-- 📊 **Statistics** - Database size and performance metrics
-- 🏗️ **Schema** - View and modify table structure
-- ➕ **Add Columns** - Dynamic schema expansion
-- 💾 **Backup** - Automated database backups
-- 🔄 **Restore** - Restore from backup files
-- 🧹 **Cleanup** - Database maintenance tools
+- 📊 **Database Statistics** - Database size and performance metrics
+- 🔧 **Table Structure** - View and modify table structure
+- 🧹 **Clean Database** - Database maintenance and cleanup tools
+- 💾 **Backup Database** - Automated database backups
+- 📥 **Restore Database** - Restore from backup files
+- 🔄 **Reset Database** - Reset database to initial state
+- 🌍 **Timezone Configuration** - Configure display timezone for timestamps
+- 🏗️ **Column Management** - Dynamic schema expansion and column operations
 
 ## 🐳 Docker Deployment
 
@@ -179,6 +202,11 @@ Use provided convenience scripts:
 ./start-docker-app.sh
 ```
 
+**To stop all services:**
+```bash
+./stop-docker-app.sh
+```
+
 ### Docker Services
 
 **Database Services (always available):**
@@ -214,7 +242,11 @@ docker compose logs -f contact-manager
 
 **Stop services:**
 ```bash
-docker compose down
+# Using script (recommended)
+./stop-docker-app.sh
+
+# Or manual command
+docker compose --profile full down
 ```
 
 **Rebuild and restart:**
@@ -227,22 +259,78 @@ docker compose --profile full up --build --force-recreate
 ### Project Structure
 ```
 multi-db-contact-manager-pro/
-├── main.py                 # Application entry point
-├── core_operations.py      # Business logic layer
-├── menus.py               # User interface menus
-├── ui.py                  # Display utilities
-├── dynamic_ui.py          # Dynamic schema UI
-├── preflight.py           # Database health checks
-├── state_tracker.py       # Application state management
-├── schema_manager.py      # Dynamic schema management
-├── database/              # Database abstraction layer
-│   ├── base.py           # Database adapter interface
-│   ├── factory.py        # Adapter factory
-│   ├── manager.py        # Database manager
-│   └── adapters/         # Database-specific implementations
-├── config/               # Configuration management
-├── docker/              # Docker initialization scripts
-└── data/               # SQLite databases and app state
+├── main.py                          # Clean entry point (17 lines)
+├── requirements.txt                 # Python dependencies
+├── docker-compose.yml              # Docker services orchestration
+├── Dockerfile                      # Container definition
+├── docker.env                     # Environment variables
+├── docker.env.example            # Environment template
+│
+├── src/                           # Source code
+│   └── contact_manager/           # Main package
+│       ├── app.py                 # Application controller
+│       ├── cli/                   # Command line interface
+│       │   └── preflight.py       # Startup checks
+│       ├── config/                # Configuration management
+│       │   ├── database_config.py
+│       │   └── settings.py
+│       ├── core/                  # Core business logic
+│       │   ├── core_operations.py
+│       │   ├── schema_manager.py
+│       │   └── state_tracker.py
+│       ├── database/              # Database abstraction layer
+│       │   ├── base.py            # Database adapter interface
+│       │   ├── factory.py         # Adapter factory
+│       │   ├── manager.py         # Database manager
+│       │   └── adapters/          # Database-specific implementations
+│       │       ├── sqlite_adapter.py
+│       │       ├── mysql_adapter.py
+│       │       ├── postgres_adapter.py
+│       │       └── mongo_adapter.py
+│       ├── menus/                 # Menu system
+│       │   ├── main_menu.py       # Main menu handler
+│       │   ├── contact_menu.py    # Contact operations
+│       │   ├── advanced_menu.py   # Advanced features
+│       │   ├── database_menu.py   # Database management
+│       │   ├── search_menu.py     # Search operations
+│       │   └── column_management_menu.py
+│       ├── ui/                    # User interface
+│       │   ├── ui.py              # Display utilities
+│       │   ├── dynamic_ui.py      # Dynamic schema UI
+│       │   └── input_helpers.py   # Input validation
+│       ├── data_management/       # Data operations
+│       │   └── dummy_data_generator.py
+│       ├── utils/                 # Utilities
+│       │   └── timezone_utils.py  # Timezone handling
+│       ├── validation/            # Data validation
+│       │   └── validation_utils.py
+│       └── tests/                 # Test files
+│           ├── test_all_databases.py
+│           └── test_preflight.py
+│
+├── scripts/                       # Shell scripts
+│   ├── run-docker.sh              # Advanced Docker management
+│   ├── start-docker-app.sh        # Quick start full application
+│   ├── stop-docker-app.sh         # Quick stop all services
+│   └── start-databases-only.sh    # Start only databases
+│
+├── docs/                          # Documentation
+│   ├── DOCS.md                    # Complete documentation
+│   ├── DOCKER_SETUP_GUIDE.md      # Docker deployment guide
+│   ├── DOCKER_COMMANDS.txt        # Quick command reference
+│   ├── PROJECT_STRUCTURE.md       # Project structure details
+│   └── MIGRATION_COMPLETE.md      # Migration documentation
+│
+├── docker/                        # Docker initialization
+│   ├── mysql-init/
+│   ├── postgres-init/
+│   └── mongo-init/
+│
+├── data/                          # Local data files
+│   ├── contacts.db                # SQLite database
+│   └── app_state.db               # Application state
+│
+└── db_backup/                     # Database backups
 ```
 
 ### Database Abstraction

@@ -85,6 +85,9 @@ This project provides a **complete multi-database contact management system** wi
 git clone <your-repo-url>
 cd multi-db-contact-manager-pro
 ./start-docker-app.sh
+
+# To stop everything
+./stop-docker-app.sh
 ```
 
 ### Manual Setup
@@ -154,44 +157,7 @@ docker compose logs
 
 ---
 
-## 📁 Project Structure
 
-```
-multi-db-contact-manager-pro/
-├── 📁 config/                    # Database configuration
-│   ├── database_config.py        # Database connection settings
-│   └── settings.py               # Application settings
-├── 📁 database/                  # Multi-database architecture
-│   ├── base.py                   # Abstract database adapter
-│   ├── factory.py                # Database factory
-│   ├── manager.py                # Database manager (singleton)
-│   └── 📁 adapters/              # Concrete database adapters
-│       ├── sqlite_adapter.py     # SQLite implementation
-│       └── mysql_adapter.py      # MySQL implementation
-├── 📁 docker/                    # Database initialization scripts
-│   ├── mysql-init/
-│   │   └── 01-create-tables.sql
-│   ├── postgres-init/
-│   │   └── 01-create-tables.sql
-│   └── mongo-init/
-│       └── 01-create-collection.js
-├── 🐳 docker-compose.yml         # Multi-service orchestration
-├── 🐳 Dockerfile                 # Application container
-├── 🐳 docker.env                 # Environment variables
-├── 🐍 main.py                    # Main application entry point
-├── 🐍 core_operations.py         # Core business logic
-├── 🐍 ui.py                      # User interface components
-├── 🐍 menus.py                   # Menu system
-├── 🐍 input_helpers.py           # Input validation
-├── 🐍 navigation.py              # Navigation logic
-├── 📚 requirements.txt           # Python dependencies
-├── 🔧 start-docker-app.sh        # Quick start script
-├── 🔧 start-databases-only.sh    # Database-only script
-├── 🔧 run-docker.sh              # Advanced management script
-├── 📚 DOCKER_SETUP_GUIDE.md      # This guide
-├── 📚 README.md                  # Main documentation
-└── 📚 USER_GUIDE.md              # User manual
-```
 
 ---
 
@@ -212,29 +178,6 @@ Python application container with:
 - SQLAlchemy ORM
 - Tabulate for table formatting
 
-### docker.env
-Environment variables:
-```env
-# Database Configuration
-DB_TYPE=sqlite
-SQLITE_PATH=contacts.db
-
-MYSQL_HOST=mysql
-MYSQL_PORT=3306
-MYSQL_USER=contact_user
-MYSQL_PASSWORD=contact_password
-MYSQL_DATABASE=contacts
-
-POSTGRES_HOST=postgres
-POSTGRES_PORT=5432
-POSTGRES_USER=contact_user
-POSTGRES_PASSWORD=contact_password
-POSTGRES_DATABASE=contacts
-
-MONGO_HOST=mongodb
-MONGO_PORT=27017
-MONGO_DATABASE=contacts
-```
 
 ---
 
@@ -331,10 +274,13 @@ docker exec -it contact-mongodb mongosh mongodb://mongodb:27017/contacts
 | **MongoDB** | *(none)* | *(none)* | contacts |
 
 ### Database Features
-- **Automatic initialization** on first startup
+- **Automatic initialization** on first startup with proper schema
 - **Persistent data** using Docker named volumes
-- **Health checks** to ensure services are ready
-- **Sample data** inserted automatically
+- **Health checks** to ensure services are ready before app starts
+- **UTC timestamp handling** with timezone display conversion
+- **6-column schema** (id, name, phone, email, created_at, updated_at)
+- **Cross-database compatibility** with unified operations
+- **Dynamic schema management** with runtime column addition
 
 ---
 
@@ -344,11 +290,15 @@ docker exec -it contact-mongodb mongosh mongodb://mongodb:27017/contacts
 
 #### Option 1: Full Application (Recommended)
 ```bash
+# Start everything
 ./start-docker-app.sh
+
+# Stop everything
+./stop-docker-app.sh
 ```
 - Starts all services + application
 - Shows interactive menu immediately
-- Press Ctrl+C to stop everything
+- Use stop script for clean shutdown
 
 #### Option 2: Databases Only
 ```bash
@@ -369,18 +319,10 @@ docker compose --profile full up -d --build
 docker compose logs -f
 
 # Stop services
-docker compose down
+./stop-docker-app.sh
+# Or manual: docker compose --profile full down
 ```
 
-### Application Features
-- ✅ **Add/View/Update/Delete** contacts
-- ✅ **Search** by name, phone, email
-- ✅ **Advanced search** with filters
-- ✅ **Database switching** at runtime
-- ✅ **Import/Export** (CSV, JSON)
-- ✅ **Analytics** and statistics
-
----
 
 ## 🌐 Accessing Services
 
@@ -534,11 +476,14 @@ docker system df -v
 
 ### Management Commands
 ```bash
-# Stop all services
-docker compose down
+# Stop all services (recommended)
+./stop-docker-app.sh
+
+# Or manual stop
+docker compose --profile full down
 
 # Stop and remove data (CAUTION!)
-docker compose down -v
+docker compose --profile full down -v
 
 # Restart specific service
 docker compose restart contact-manager
@@ -565,8 +510,11 @@ docker compose logs -f
 # Stop everything
 docker compose down
 
-# Clean restart
-docker compose down && docker compose up --build
+# Clean restart (recommended)
+./stop-docker-app.sh && ./start-docker-app.sh
+
+# Or manual restart
+docker compose --profile full down && docker compose --profile full up --build
 ```
 
 ### 🔑 Database Credentials

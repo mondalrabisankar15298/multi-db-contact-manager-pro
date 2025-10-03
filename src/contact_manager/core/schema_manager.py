@@ -184,7 +184,7 @@ class SchemaManager:
                 # Format timestamp columns for display
                 if column in ['created_at', 'updated_at'] and value is not None:
                     try:
-                        from utils.timezone_utils import format_timestamp_for_display
+                        from ..utils.timezone_utils import format_timestamp_for_display
                         contact_dict[column] = format_timestamp_for_display(value)
                     except ImportError:
                         # Fallback if timezone utils not available
