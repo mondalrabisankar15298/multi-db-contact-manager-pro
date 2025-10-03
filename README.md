@@ -528,7 +528,6 @@ print('Columns:', SchemaManager.get_table_columns())
 | **[DOCS.md](docs/DOCS.md)** | Complete documentation with architecture and troubleshooting |
 | **[PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md)** | Detailed project structure and component overview |
 | **[DOCKER_SETUP_GUIDE.md](docs/DOCKER_SETUP_GUIDE.md)** | Comprehensive Docker deployment guide |
-| **[MIGRATION_COMPLETE.md](docs/MIGRATION_COMPLETE.md)** | Database migration and upgrade procedures |
 | **[docker.env.example](docker.env.example)** | Environment configuration template |
 
 ---
@@ -649,12 +648,6 @@ Have an idea? We'd love to hear it! Please include:
 - [ ] **Machine Learning** - Contact deduplication and data enrichment
 - [ ] **Enterprise Features** - LDAP integration, SSO, audit trails
 - [ ] **Multi-tenant Support** - SaaS-ready multi-organization support
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
