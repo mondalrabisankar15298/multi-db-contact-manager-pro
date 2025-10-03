@@ -10,6 +10,9 @@
 # Quick start (recommended) - starts everything
 ./start-docker-app.sh
 
+# Quick stop (recommended) - stops everything
+./stop-docker-app.sh
+
 # Manual start with build
 docker compose --profile full up --build
 
@@ -26,11 +29,14 @@ docker compose up -d mysql postgres mongodb adminer
 
 # ================= STOP APPLICATION ==============
 
-# Stop all containers (keeps data)
-docker compose down
+# Stop all containers (recommended)
+./stop-docker-app.sh
+
+# Manual stop (keeps data)
+docker compose --profile full down
 
 # Stop and DELETE ALL DATA (DANGER!)
-docker compose down -v
+docker compose --profile full down -v
 
 # Stop running application
 # Press Ctrl+C in terminal
@@ -145,8 +151,11 @@ nano main.py
 docker compose build contact-manager
 docker compose restart contact-manager
 
-# Full restart after changes
-docker compose down && ./start-docker-app.sh
+# Full restart after changes (recommended)
+./stop-docker-app.sh && ./start-docker-app.sh
+
+# Or manual restart
+docker compose --profile full down && ./start-docker-app.sh
 
 # ============= DANGER ZONE (USE CAREFULLY) ============
 
@@ -164,7 +173,7 @@ docker volume prune -f
 # ==================================================
 
 # START:    ./start-docker-app.sh
-# STOP:     docker compose down
+# STOP:     ./stop-docker-app.sh
 # STATUS:   docker compose ps
 # LOGS:     docker compose logs -f
 # ADMINER:  http://localhost:8050

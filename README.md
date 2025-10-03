@@ -89,10 +89,12 @@
 | **MongoDB** | ✅ Production Ready | Document store, flexible schema | Native datetime objects | Compound indexes |
 
 ### 🔧 Advanced Database Features
-- **Unified table structure** across all database types
-- **Automatic timestamp management** with UTC timezone handling
+- **Unified 6-column schema** across all database types (id, name, phone, email, created_at, updated_at)
+- **Automatic timestamp management** with UTC storage and configurable timezone display
 - **Optimized indexing strategy** for maximum query performance
 - **Intelligent schema validation** with automatic consistency checks
+- **Dynamic column management** with runtime schema expansion
+- **Cross-database compatibility** with unified operations
 
 ---
 
@@ -133,6 +135,9 @@ python main.py
 ```bash
 # Full Docker deployment
 ./start-docker-app.sh
+
+# Stop all services
+./stop-docker-app.sh
 
 # Or databases only (run app locally)
 ./start-databases-only.sh && python main.py
@@ -325,6 +330,7 @@ Enter your choice (0-8): 1
    📋 Table Name: contacts
    📊 Total Records: 1,324
    📏 Columns: 6 (id, name, phone, email, created_at, updated_at)
+   🕒 Timestamps: UTC storage with timezone-aware display
    💾 Table Size: 15.2 MB
    📅 Last Modified: 2024-01-15 14:45:12 UTC
 
@@ -398,11 +404,11 @@ graph LR
 
 ### 🎯 Deployment Options
 
-| Option | Use Case | Command | Services |
-|--------|----------|---------|----------|
-| **Full Docker** | Production, isolated environment | `docker compose --profile full up --build` | App + All DBs |
-| **Hybrid** | Development, debugging | `docker compose up -d mysql postgres mongodb` | DBs only |
-| **Scripts** | Quick setup | `./start-docker-app.sh` | Automated |
+| Option | Use Case | Start Command | Stop Command | Services |
+|--------|----------|---------------|--------------|----------|
+| **Full Docker** | Production, isolated environment | `docker compose --profile full up --build` | `docker compose --profile full down` | App + All DBs |
+| **Hybrid** | Development, debugging | `docker compose up -d mysql postgres mongodb` | `docker compose down` | DBs only |
+| **Scripts** | Quick setup | `./start-docker-app.sh` | `./stop-docker-app.sh` | Automated |
 
 ### 📦 Docker Services
 
@@ -569,12 +575,16 @@ file -I your_file.csv
 
 #### ❌ Docker Issues
 ```bash
-# Clean restart
-docker compose down
-docker compose up --build
+# Clean restart using scripts
+./stop-docker-app.sh
+./start-docker-app.sh
+
+# Or manual commands
+docker compose --profile full down
+docker compose --profile full up --build
 
 # Reset volumes (⚠️ deletes data)
-docker compose down -v
+docker compose --profile full down -v
 docker volume prune
 ```
 
