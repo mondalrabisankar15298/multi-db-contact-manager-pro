@@ -70,15 +70,18 @@ class MongoDBAdapter(DatabaseAdapter):
             return False
     
     def create_table(self) -> None:
-        """Create indexes for the contacts collection."""
+        """Create indexes for the contacts collection (matches Docker init script)."""
         if self.collection is None:
             raise ConnectionError("MongoDB not initialized")
         
         # MongoDB creates collections automatically, but we can create indexes
+        # Create indexes matching the Docker initialization script
         self.collection.create_index("id", unique=True)
         self.collection.create_index("name")
         self.collection.create_index("email")
         self.collection.create_index("phone")
+        self.collection.create_index("created_at")  # Add timestamp index
+        self.collection.create_index("updated_at")  # Add timestamp index
         
         # Initialize counter if not exists
         counters = self.db['counters']

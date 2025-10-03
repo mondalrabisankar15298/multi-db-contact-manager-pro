@@ -34,8 +34,9 @@ class ContactManagerApp:
             if db_manager.current_db_type != default_db:
                 db_manager.switch_database(default_db)
             
-            # Create table if needed
+            # Create table if needed and validate structure
             create_table()
+            self._validate_and_repair_table_structure()
             
             self._initialized = True
             return True
@@ -43,6 +44,54 @@ class ContactManagerApp:
         except Exception as e:
             display_error(f"Failed to initialize application: {str(e)}")
             return False
+    
+    def _validate_and_repair_table_structure(self) -> None:
+        """Validate and repair table structure to ensure all required columns exist."""
+        try:
+            from .core.schema_manager import SchemaManager
+            
+            # Get current table columns
+            current_columns = SchemaManager.get_table_columns()
+            required_columns = SchemaManager.REQUIRED_COLUMNS
+            
+            # Check for missing columns
+            missing_columns = []
+            for required_col in required_columns:
+                if required_col not in current_columns:
+                    missing_columns.append(required_col)
+            
+            # Add missing columns
+            if missing_columns:
+                display_success(f"🔧 Repairing table structure - adding missing columns: {', '.join(missing_columns)}")
+                
+                for col_name in missing_columns:
+                    if col_name == 'created_at':
+                        # Add created_at timestamp column
+                        if db_manager.current_db_type == 'mysql':
+                            SchemaManager.add_column(col_name, 'TIMESTAMP', 'CURRENT_TIMESTAMP')
+                        elif db_manager.current_db_type in ['postgres', 'postgresql']:
+                            SchemaManager.add_column(col_name, 'TIMESTAMP', "(NOW() AT TIME ZONE 'UTC')")
+                        else:  # SQLite
+                            SchemaManager.add_column(col_name, 'TEXT', "(datetime('now', 'utc'))")
+                    elif col_name == 'updated_at':
+                        # Add updated_at timestamp column
+                        if db_manager.current_db_type == 'mysql':
+                            SchemaManager.add_column(col_name, 'TIMESTAMP', 'CURRENT_TIMESTAMP')
+                        elif db_manager.current_db_type in ['postgres', 'postgresql']:
+                            SchemaManager.add_column(col_name, 'TIMESTAMP', "(NOW() AT TIME ZONE 'UTC')")
+                        else:  # SQLite
+                            SchemaManager.add_column(col_name, 'TEXT', "(datetime('now', 'utc'))")
+                    else:
+                        # Add other missing columns with appropriate defaults
+                        SchemaManager.add_column(col_name, 'TEXT', None)
+                
+                display_success("✅ Table structure repaired successfully!")
+            else:
+                # Table structure is correct
+                pass
+                
+        except Exception as e:
+            display_error(f"⚠️  Warning: Could not validate table structure: {str(e)}")
     
     def is_interactive(self) -> bool:
         """Check if the application should run in interactive mode."""

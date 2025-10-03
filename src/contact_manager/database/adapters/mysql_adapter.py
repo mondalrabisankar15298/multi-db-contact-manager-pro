@@ -90,7 +90,7 @@ class MySQLAdapter(DatabaseAdapter):
             return False
     
     def create_table(self) -> None:
-        """Create the contacts table with minimal 4 columns."""
+        """Create the contacts table with 6 columns including timestamps."""
         if self.engine is None:
             raise ConnectionError("MySQL engine not initialized")
         
@@ -99,7 +99,9 @@ class MySQLAdapter(DatabaseAdapter):
             id INT AUTO_INCREMENT PRIMARY KEY,
             name VARCHAR(255) NOT NULL,
             phone VARCHAR(50),
-            email VARCHAR(255)
+            email VARCHAR(255),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """
         
@@ -576,7 +578,7 @@ class MySQLAdapter(DatabaseAdapter):
             return False
     
     def reset_table_structure(self) -> bool:
-        """Reset table to base 4-column structure (drop and recreate)."""
+        """Reset table to base 6-column structure (drop and recreate)."""
         try:
             if self.engine is None:
                 return False
@@ -585,14 +587,16 @@ class MySQLAdapter(DatabaseAdapter):
                 # Drop existing table
                 conn.execute(text("DROP TABLE IF EXISTS contacts"))
                 
-                # Recreate table with only 4 base columns
+                # Recreate table with 6 base columns including timestamps
                 conn.execute(text("""
                     CREATE TABLE contacts (
                         id INT AUTO_INCREMENT PRIMARY KEY,
                         name VARCHAR(255) NOT NULL,
                         phone VARCHAR(50),
-                        email VARCHAR(255)
-                    )
+                        email VARCHAR(255),
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
                 """))
                 
                 conn.commit()
