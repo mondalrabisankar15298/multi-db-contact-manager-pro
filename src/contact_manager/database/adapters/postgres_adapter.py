@@ -55,17 +55,44 @@ class PostgreSQLAdapter(DatabaseAdapter):
             return False
     
     def create_table(self) -> None:
-        """Create the contacts table with minimal 4 columns."""
+        """Create the contacts table with 6 columns including timestamps."""
         conn = self.get_connection()
         cursor = conn.cursor()
+        
+        # Create table with timestamps
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS contacts (
             id SERIAL PRIMARY KEY,
             name VARCHAR(255) NOT NULL,
             phone VARCHAR(50),
-            email VARCHAR(255)
+            email VARCHAR(255),
+            created_at TIMESTAMP DEFAULT (NOW() AT TIME ZONE 'UTC'),
+            updated_at TIMESTAMP DEFAULT (NOW() AT TIME ZONE 'UTC')
         )
         """)
+        
+        # Create function for updating updated_at column
+        cursor.execute("""
+        CREATE OR REPLACE FUNCTION update_updated_at_column()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            NEW.updated_at = (NOW() AT TIME ZONE 'UTC');
+            RETURN NEW;
+        END;
+        $$ language 'plpgsql'
+        """)
+        
+        # Create trigger to automatically update updated_at column
+        cursor.execute("""
+        DROP TRIGGER IF EXISTS update_contacts_updated_at ON contacts
+        """)
+        cursor.execute("""
+        CREATE TRIGGER update_contacts_updated_at 
+            BEFORE UPDATE ON contacts 
+            FOR EACH ROW 
+            EXECUTE FUNCTION update_updated_at_column()
+        """)
+        
         conn.commit()
         cursor.close()
         conn.close()
@@ -547,7 +574,7 @@ class PostgreSQLAdapter(DatabaseAdapter):
             return False
     
     def reset_table_structure(self) -> bool:
-        """Reset table to base 4-column structure (drop and recreate)."""
+        """Reset table to base 6-column structure (drop and recreate)."""
         try:
             conn = self.get_connection()
             cursor = conn.cursor()
@@ -555,14 +582,35 @@ class PostgreSQLAdapter(DatabaseAdapter):
             # Drop existing table (CASCADE drops the sequence too)
             cursor.execute("DROP TABLE IF EXISTS contacts CASCADE")
             
-            # Recreate table with only 4 base columns
+            # Recreate table with 6 base columns including timestamps
             cursor.execute("""
                 CREATE TABLE contacts (
                     id SERIAL PRIMARY KEY,
                     name VARCHAR(255) NOT NULL,
                     phone VARCHAR(50),
-                    email VARCHAR(255)
+                    email VARCHAR(255),
+                    created_at TIMESTAMP DEFAULT (NOW() AT TIME ZONE 'UTC'),
+                    updated_at TIMESTAMP DEFAULT (NOW() AT TIME ZONE 'UTC')
                 )
+            """)
+            
+            # Create function for updating updated_at column
+            cursor.execute("""
+            CREATE OR REPLACE FUNCTION update_updated_at_column()
+            RETURNS TRIGGER AS $$
+            BEGIN
+                NEW.updated_at = (NOW() AT TIME ZONE 'UTC');
+                RETURN NEW;
+            END;
+            $$ language 'plpgsql'
+            """)
+            
+            # Create trigger to automatically update updated_at column
+            cursor.execute("""
+            CREATE TRIGGER update_contacts_updated_at 
+                BEFORE UPDATE ON contacts 
+                FOR EACH ROW 
+                EXECUTE FUNCTION update_updated_at_column()
             """)
             
             conn.commit()
