@@ -59,7 +59,7 @@
 ### 📊 **Professional Operations**
 - **CRUD Operations** with validation
 - **Advanced Search** & filtering
-- **Bulk Operations** for efficiency
+- **Enhanced Bulk Operations** - 6 deletion methods, smart updates
 - **Import/Export** (CSV, JSON)
 - **Real-time Analytics** & reporting
 - **Automated Backups** with restore
@@ -141,6 +141,19 @@ python main.py
 
 # Or databases only (run app locally)
 ./start-databases-only.sh && python main.py
+```
+
+### Option 4: Development Scripts (NEW) ⚡
+```bash
+# Quick rebuild & run (fastest for development)
+./run-app.sh
+
+# Interactive rebuild menu with options
+./quick-rebuild.sh
+
+# Available from scripts/ directory too
+scripts/run-app.sh
+scripts/quick-rebuild.sh
 ```
 
 ---
@@ -409,6 +422,7 @@ graph LR
 | **Full Docker** | Production, isolated environment | `docker compose --profile full up --build` | `docker compose --profile full down` | App + All DBs |
 | **Hybrid** | Development, debugging | `docker compose up -d mysql postgres mongodb` | `docker compose down` | DBs only |
 | **Scripts** | Quick setup | `./start-docker-app.sh` | `./stop-docker-app.sh` | Automated |
+| **Dev Scripts** ⚡ | Fast development | `./run-app.sh` | `Ctrl+C` | Quick rebuild |
 
 ### 📦 Docker Services
 

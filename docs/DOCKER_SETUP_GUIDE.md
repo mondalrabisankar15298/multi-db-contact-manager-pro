@@ -417,7 +417,24 @@ docker exec contact-mongodb mongosh --eval "db.adminCommand('ping')"
 
 ## 🔄 Development Workflow
 
-### Making Code Changes
+### Quick Development Scripts (NEW) ⚡
+**Fastest way to develop and test changes:**
+
+```bash
+# Quick rebuild & run (recommended for development)
+./run-app.sh
+
+# Interactive rebuild menu with options
+./quick-rebuild.sh
+```
+
+**Benefits:**
+- ⚡ **3x faster** than full rebuild
+- 🔄 Keeps databases running
+- 🎯 Interactive input support
+- 📁 Available as `scripts/run-app.sh` too
+
+### Traditional Method (Slower)
 ```bash
 # 1. Edit Python files
 nano main.py

@@ -271,7 +271,19 @@ class SQLiteAdapter(DatabaseAdapter):
     
     def bulk_update(self, contact_ids: List[int], field: str, new_value: str) -> int:
         """Update multiple contacts at once. Returns number of updated contacts."""
-        if not contact_ids or field not in ['name', 'phone', 'email']:
+        if not contact_ids:
+            return 0
+        
+        # Get valid columns dynamically
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("PRAGMA table_info(contacts)")
+        table_info = cursor.fetchall()
+        valid_columns = [col[1] for col in table_info if col[1] not in ['id', 'created_at', 'updated_at']]
+        cursor.close()
+        
+        if field not in valid_columns:
+            conn.close()
             return 0
         
         conn = self.get_connection()

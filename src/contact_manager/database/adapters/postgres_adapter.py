@@ -320,7 +320,21 @@ class PostgreSQLAdapter(DatabaseAdapter):
     
     def bulk_update(self, contact_ids: List[int], field: str, new_value: str) -> int:
         """Update multiple contacts at once. Returns number of updated contacts."""
-        if not contact_ids or field not in ['name', 'phone', 'email']:
+        if not contact_ids:
+            return 0
+        
+        # Get valid columns dynamically
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT column_name FROM information_schema.columns 
+            WHERE table_name = 'contacts' AND column_name NOT IN ('id', 'created_at', 'updated_at')
+        """)
+        valid_columns = [row[0] for row in cursor.fetchall()]
+        cursor.close()
+        
+        if field not in valid_columns:
+            conn.close()
             return 0
         
         conn = self.get_connection()

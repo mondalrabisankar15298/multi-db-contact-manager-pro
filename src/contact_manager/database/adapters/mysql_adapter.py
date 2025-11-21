@@ -341,7 +341,16 @@ class MySQLAdapter(DatabaseAdapter):
     
     def bulk_update(self, contact_ids: List[int], field: str, new_value: str) -> int:
         """Update multiple contacts at once. Returns number of updated contacts."""
-        if not contact_ids or field not in ['name', 'phone', 'email']:
+        if not contact_ids:
+            return 0
+        
+        # Get valid columns dynamically
+        from ..manager import db_manager
+        with self.engine.connect() as conn:
+            result = conn.execute(text("SHOW COLUMNS FROM contacts"))
+            valid_columns = [row[0] for row in result if row[0] not in ['id', 'created_at', 'updated_at']]
+        
+        if field not in valid_columns:
             return 0
         
         if self.engine is None:

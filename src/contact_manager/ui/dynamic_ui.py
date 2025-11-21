@@ -85,10 +85,9 @@ def display_contacts_dynamic(contacts: List[tuple], detailed: bool = False):
         # Note: Now showing all columns in compact view
 
 
-def get_contact_input_dynamic() -> Dict[str, Any]:
+def get_contact_input_dynamic(is_update: bool = False) -> Dict[str, Any]:
     """Get contact input dynamically based on current schema."""
-    columns = schema_manager.get_table_columns()
-    editable_columns = [col for col in columns if col != 'id']
+    editable_columns = schema_manager.get_editable_columns()
     
     contact_data = {}
     
@@ -99,7 +98,8 @@ def get_contact_input_dynamic() -> Dict[str, Any]:
     for col in editable_columns:
         # Format prompt
         col_display = col.replace('_', ' ').title()
-        is_required = (col == 'name')
+        # Name is only required for new contacts, not updates
+        is_required = (col == 'name') and not is_update
         prompt = f"{col_display}{'*' if is_required else ''}: "
         
         while True:
@@ -107,7 +107,8 @@ def get_contact_input_dynamic() -> Dict[str, Any]:
             
             # Allow cancellation or exit
             if value_raw.lower() in ('q', 'quit', 'cancel', 'abort', 'back') or value_raw == '0':
-                print("ℹ️  Add contact aborted.")
+                action = "Update" if is_update else "Add contact"
+                print(f"ℹ️  {action} aborted.")
                 return None
             if value_raw == '111':
                 print("\n👋 Thank you for using Contact Book Manager!")
@@ -121,9 +122,14 @@ def get_contact_input_dynamic() -> Dict[str, Any]:
                 print(f"❌ {col_display} is required!")
                 continue
             
-            # Empty value for optional fields
-            if not value and not is_required:
-                break
+            # Empty value for optional fields or updates
+            if not value:
+                if is_update:
+                    # For updates, empty means keep current value - don't include in update dict
+                    break
+                elif not is_required:
+                    # For new contacts, empty optional fields are allowed
+                    break
             
             # Field-specific validation
             if col == 'email' and value:
@@ -138,8 +144,9 @@ def get_contact_input_dynamic() -> Dict[str, Any]:
                 # Format phone consistently
                 value = format_phone(value)
             
-            # Store the value
-            contact_data[col] = value
+            # Store the value (only if not empty or if it's a new contact)
+            if value or not is_update:
+                contact_data[col] = value
             break
     
     return contact_data

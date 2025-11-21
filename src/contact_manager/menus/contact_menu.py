@@ -35,7 +35,7 @@ class ContactMenuHandler:
                 contact_data.get('phone', '')
             )
             
-            if not validation['is_valid']:
+            if not validation['valid']:
                 display_error("Cannot add contact:")
                 for error in validation['errors']:
                     print(f"   • {error}")
@@ -97,21 +97,41 @@ class ContactMenuHandler:
             if contact_id is None:
                 return
             
-            # Check if contact exists
-            contacts = view_contacts()
-            contact_exists = any(contact[0] == contact_id for contact in contacts)
+            # Get current contact data
+            from ..core.core_operations import get_contact_by_id
+            current_contact = get_contact_by_id(contact_id)
             
-            if not contact_exists:
+            if not current_contact:
                 display_error(f"Contact with ID {contact_id} not found.")
                 return
             
+            # Display current contact information
+            from ..core.schema_manager import schema_manager
+            current_data = schema_manager.get_contact_as_dict(current_contact)
+            
+            print(f"\n📋 Current Contact Information (ID: {contact_id}):")
+            print("=" * 50)
+            all_columns = schema_manager.get_display_columns()  # Get all columns in display order
+            for col in all_columns:
+                col_display = col.replace('_', ' ').title()
+                current_value = current_data.get(col, '')
+                display_value = current_value if current_value not in [None, ''] else '(not set)'
+                print(f"   {col_display:<15} {display_value}")
+            
             # Get updated data
-            print(f"\nUpdating contact ID {contact_id}:")
+            print(f"\n✏️  Enter New Values:")
+            print("=" * 50)
             print("(Leave fields empty to keep current values)")
             
-            contact_data = get_contact_input_dynamic()
+            contact_data = get_contact_input_dynamic(is_update=True)
             if contact_data is None:
                 display_warning("Update cancelled.")
+                return
+            
+            # Check if any fields were actually changed
+            if not contact_data:
+                # No fields to update - user kept all current values
+                display_success(f"Contact {contact_id} kept with current values (no changes made).")
                 return
             
             # Validate uniqueness (excluding current contact)
@@ -122,17 +142,17 @@ class ContactMenuHandler:
                 exclude_id=contact_id
             )
             
-            if not validation['is_valid']:
+            if not validation['valid']:
                 display_error("Cannot update contact:")
                 for error in validation['errors']:
                     print(f"   • {error}")
                 return
             
-            success = update_contact(contact_id, contact_data)
-            if success:
+            try:
+                update_contact(contact_id, **contact_data)
                 display_success(f"Contact {contact_id} updated successfully!")
-            else:
-                display_error("Failed to update contact.")
+            except Exception as e:
+                display_error(f"Failed to update contact: {str(e)}")
                 
         except Exception as e:
             display_error(f"Error updating contact: {str(e)}")
