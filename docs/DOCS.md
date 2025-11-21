@@ -207,6 +207,32 @@ Use provided convenience scripts:
 ./stop-docker-app.sh
 ```
 
+### Option 4: Development Scripts (NEW) ⚡
+Fast rebuild scripts for active development:
+
+**Quick rebuild & run (fastest):**
+```bash
+./run-app.sh
+```
+
+**Interactive rebuild menu:**
+```bash
+./quick-rebuild.sh
+```
+
+**Available options in quick-rebuild.sh:**
+1. 🔄 Rebuild app only (keeps databases running)
+2. 🏗️ Rebuild app + restart databases
+3. 🧹 Clean rebuild (remove old images)
+4. 📋 Just run existing app (no rebuild)
+5. 🛑 Stop all services
+
+**Benefits:**
+- ⚡ **Much faster** - Only rebuilds app, not databases
+- 🔄 **Database persistence** - Databases stay running between rebuilds
+- 🎯 **Interactive input** - Full app functionality
+- 📁 **Available in scripts/** - Can run from `scripts/run-app.sh`
+
 ### Docker Services
 
 **Database Services (always available):**
@@ -404,13 +430,25 @@ contacts = view_contacts()
 
 ### Bulk Update
 - Update multiple contacts simultaneously
-- Field-specific updates
-- Safety confirmations
+- Dynamic field selection (including custom columns)
+- Support for all database types
+- Field validation (email, phone formatting)
+- Safety confirmations with preview
 
-### Bulk Delete
-- Delete multiple contacts at once
-- ID-based selection
+### Enhanced Bulk Delete (NEW)
+**6 Deletion Methods:**
+1. 🎯 **By Contact IDs** - Manual ID selection (e.g., 1,3,5)
+2. 🔍 **By Search Pattern** - Search in name, email, or phone
+3. 📧 **By Email Domain** - Delete all @domain.com contacts
+4. 📱 **By Phone Pattern** - Delete by area code/pattern
+5. 📅 **By Date Range** - Delete contacts by creation date
+6. 🧹 **Delete ALL Contacts** - Nuclear option with extra safety
+
+**Safety Features:**
 - Multiple confirmation prompts
+- Preview contacts before deletion
+- Contact count summaries
+- Special "DELETE ALL" text confirmation
 
 ## 🏷️ Organization
 
