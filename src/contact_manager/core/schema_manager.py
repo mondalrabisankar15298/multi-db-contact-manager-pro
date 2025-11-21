@@ -111,9 +111,9 @@ class SchemaManager:
     
     @staticmethod
     def get_editable_columns() -> List[str]:
-        """Get list of columns that can be edited (excludes id)."""
+        """Get list of columns that can be edited (excludes id and timestamps)."""
         columns = SchemaManager.get_table_columns()
-        return [col for col in columns if col != 'id']
+        return [col for col in columns if col not in ['id', 'created_at', 'updated_at']]
     
     @staticmethod
     def get_optional_columns() -> List[str]:

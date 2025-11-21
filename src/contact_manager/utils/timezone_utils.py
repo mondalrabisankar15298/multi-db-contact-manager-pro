@@ -42,8 +42,13 @@ def format_timestamp_for_display(timestamp: Union[str, datetime, None]) -> str:
                 # ISO format: 2025-10-02T08:15:30
                 dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
             elif ' ' in timestamp:
-                # MySQL/PostgreSQL format: 2025-10-02 08:15:30
-                dt = datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S')
+                # MySQL/PostgreSQL format with or without microseconds
+                if '.' in timestamp:
+                    # With microseconds: 2025-10-02 08:15:30.123456
+                    dt = datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S.%f')
+                else:
+                    # Without microseconds: 2025-10-02 08:15:30
+                    dt = datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S')
             else:
                 # Other formats
                 dt = datetime.fromisoformat(timestamp)
